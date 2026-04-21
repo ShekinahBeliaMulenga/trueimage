@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TrueImage - Upload</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;600;700&family=Roboto+Mono&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "primary-container": "#00f2ff",
+          "on-primary": "#00363a",
+          "background": "#131313",
+          "outline-variant": "#3a494b",
+          "outline": "#849495",
+          "surface": "#131313",
+          "primary": "#e1fdff",
+          "on-surface-variant": "#b9cacb",
+          "on-surface": "#e5e2e1",
+          "surface-container-low": "#1c1b1b",
+          "surface-container-lowest": "#0e0e0e",
+          "surface-container-high": "#2a2a2a",
+          "surface-container": "#201f1f",
+        },
+        borderRadius: { "DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px" },
+        fontFamily: {
+          "headline": ["Space Grotesk"],
+          "body": ["Inter"],
+          "mono": ["Roboto Mono"]
+        }
+      }
+    }
+  }
+</script>
+<style>
+  .scan-line {
+    position: absolute; width: 100%; height: 2px;
+    background: #00f2ff; top: 0; left: 0;
+    animation: scanning 4s linear infinite; z-index: 10;
+    box-shadow: 0 0 10px #00f2ff, 0 0 5px #00f2ff;
+  }
+  @keyframes scanning {
+    0%   { top: 0%;   opacity: 0; }
+    5%   { opacity: 1; }
+    95%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  .ghost-border  { border: 1px solid rgba(132,148,149,0.2); }
+  .ambient-glow  { box-shadow: 0 0 60px -15px rgba(0,242,255,0.08); }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; }
+  
+  /* Smooth transition for drop zone */
+  #drop-zone { transition: all 0.3s ease; }
+  .dragover {
+    border-color: #00f2ff !important;
+    background-color: #1c1b1b !important;
+    box-shadow: inset 0 0 30px rgba(0,242,255,0.1) !important;
+  }
+</style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary">
+
+<header class="bg-[#131313]/90 backdrop-blur-md border-b border-white/5 flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50">
+  <div class="text-xl font-bold tracking-tighter text-[#00f2ff] uppercase font-headline flex items-center gap-2">
+    <span class="material-symbols-outlined text-xl">fingerprint</span>
+    TrueImage
+  </div>
+  <nav class="hidden md:flex items-center space-x-8">
+    <a class="text-zinc-500 hover:text-[#e1fdff] transition-colors text-sm font-medium uppercase tracking-wider" href="#">Models</a>
+    <a class="text-zinc-500 hover:text-[#e1fdff] transition-colors text-sm font-medium uppercase tracking-wider" href="#">Datasets</a>
+    <a class="text-[#00f2ff] border-b border-[#00f2ff] pb-1 text-sm font-medium uppercase tracking-wider" href="#">Workbench</a>
+  </nav>
+  <div class="flex items-center space-x-4">
+    <span class="material-symbols-outlined cursor-pointer text-zinc-500 hover:text-[#e1fdff] transition-colors">memory</span>
+    <span class="material-symbols-outlined cursor-pointer text-zinc-500 hover:text-[#e1fdff] transition-colors">settings</span>
+  </div>
+</header>
+
+<main class="min-h-screen pt-32 pb-24 px-6 flex flex-col items-center justify-center">
+
+  <div class="text-center mb-10 w-full max-w-4xl">
+    <h1 class="font-headline font-black text-4xl md:text-6xl tracking-tighter uppercase text-primary mb-3">
+      Authenticity Analysis
+    </h1>
+    <div class="flex flex-wrap items-center justify-center gap-4 text-primary-container font-mono text-[10px] md:text-xs tracking-[0.2em] uppercase">
+      <span class="flex items-center"><span class="w-1.5 h-1.5 bg-primary-container mr-2 animate-pulse"></span>SYSTEM: READY</span>
+      <span class="flex items-center"><span class="w-1.5 h-1.5 bg-zinc-600 mr-2"></span>BUFFER: CLEAR</span>
+      <span class="flex items-center"><span class="w-1.5 h-1.5 border border-primary-container mr-2"></span>MODEL: ENV2-S</span>
+    </div>
+  </div>
+
+  {% if error %}
+  <div class="w-full max-w-4xl mb-6 px-4 py-3 bg-red-950/50 border border-red-500/50 text-red-300 font-mono text-sm flex items-center gap-3 backdrop-blur-sm">
+    <span class="material-symbols-outlined text-red-400">warning</span>
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <div class="w-full max-w-3xl relative">
+    <div class="absolute -top-6 -left-2 font-mono text-[9px] text-outline uppercase tracking-widest opacity-60 hidden md:block">
+      DRAG_DROP_INTERFACE_V2.04<br/>COORD: 15.4166° S, 28.2833° E
+    </div>
+    <div class="absolute -top-6 -right-2 font-mono text-[9px] text-right text-outline uppercase tracking-widest opacity-60 hidden md:block">
+      OPERATIONAL_STATUS: IDLE<br/>ENCRYPTION: AES-256-GCM
+    </div>
+
+    <form id="upload-form" action="/predict" method="POST" enctype="multipart/form-data">
+      <input type="file" id="file-input" name="image" accept=".jpg,.jpeg,.png" class="hidden"/>
+
+      <div class="relative bg-surface-container-low ghost-border p-1 ambient-glow cursor-pointer overflow-hidden mt-4 md:mt-0" id="drop-zone">
+        <div class="relative bg-surface-container-lowest border border-dashed border-primary-container/20 h-[350px] md:h-[400px] flex flex-col items-center justify-center transition-all duration-300 hover:border-primary-container/50 hover:bg-surface-container-low" id="drop-inner">
+
+          <div class="scan-line hidden" id="scan-line"></div>
+
+          <div class="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-primary-container"></div>
+          <div class="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary-container"></div>
+          <div class="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-primary-container"></div>
+          <div class="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-primary-container"></div>
+
+          <div class="relative z-20 flex flex-col items-center text-center px-6 w-full" id="drop-default">
+            <span class="material-symbols-outlined text-primary-container text-5xl md:text-6xl mb-4 opacity-80" style="font-variation-settings:'wght' 100">data_object</span>
+            <h2 class="font-headline font-bold text-xl md:text-2xl text-on-surface tracking-tight mb-3 uppercase">Initialize Image Scan</h2>
+            <p class="font-body text-zinc-500 text-xs md:text-sm max-w-sm uppercase tracking-tight font-light leading-relaxed">
+              Drag & Drop JPEG or PNG files here or click to browse for deepfake verification.
+            </p>
+          </div>
+
+          <div class="relative z-20 flex flex-col items-center text-center px-4 hidden w-full h-full justify-center bg-surface-container-lowest/90" id="drop-preview">
+            <div class="relative p-2 border border-primary-container/30 bg-black mb-4 group">
+                <img id="preview-img" src="" alt="Preview" class="h-40 md:h-56 object-contain"/>
+                <div class="absolute inset-0 bg-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span class="bg-black/80 text-primary-container text-xs font-mono px-3 py-1 uppercase tracking-widest border border-primary-container/50">Change Image</span>
+                </div>
+            </div>
+            <p id="preview-name" class="font-mono text-xs text-primary-container mb-1 truncate max-w-[250px]"></p>
+            <p id="preview-size" class="font-mono text-[10px] text-outline tracking-widest"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-2 md:space-x-4 w-full sm:w-auto">
+          <div class="bg-surface-container-high px-4 py-2 border-l-2 border-zinc-600 flex-1 sm:flex-none">
+            <span class="block font-mono text-[9px] text-outline uppercase tracking-widest mb-1">Formats</span>
+            <span class="block font-headline font-bold text-primary-container text-sm">JPG · PNG</span>
+          </div>
+          <div class="bg-surface-container-high px-4 py-2 border-l-2 border-zinc-600 flex-1 sm:flex-none">
+            <span class="block font-mono text-[9px] text-outline uppercase tracking-widest mb-1">Max Size</span>
+            <span class="block font-headline font-bold text-primary-container text-sm">10 MB</span>
+          </div>
+        </div>
+        
+        <button type="button" id="submit-btn" 
+                class="w-full sm:w-auto bg-primary-container text-on-primary font-headline font-black text-sm tracking-[0.15em] px-8 py-4 uppercase hover:bg-white hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:bg-primary-container flex items-center justify-center gap-2"
+                disabled>
+          <span class="material-symbols-outlined text-lg" id="btn-icon">radar</span>
+          <span id="btn-text">Initiate Upload</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <p class="mt-12 font-mono text-[10px] text-zinc-600 uppercase tracking-widest text-center max-w-lg">
+    Privacy Notice: Processed in volatile memory. Auto-deletion triggered post-inference. Zero permanent retention.
+  </p>
+</main>
+
+<footer class="bg-[#0a0a0a] border-t border-white/5 flex flex-col md:flex-row justify-between items-center w-full px-8 py-6 mt-auto">
+  <div class="text-xs font-black text-[#00f2ff] font-headline uppercase tracking-widest mb-4 md:mb-0">TrueImage System</div>
+  <div class="flex flex-wrap justify-center gap-4 md:gap-6 mb-4 md:mb-0">
+    <a class="text-zinc-600 font-mono text-[10px] uppercase tracking-widest hover:text-[#00f2ff] transition-colors" href="#">Docs</a>
+    <a class="text-zinc-600 font-mono text-[10px] uppercase tracking-widest hover:text-[#00f2ff] transition-colors" href="#">Ethics Policy</a>
+    <a class="text-zinc-600 font-mono text-[10px] uppercase tracking-widest hover:text-[#00f2ff] transition-colors" href="#">Security</a>
+  </div>
+  <div class="text-zinc-600 font-mono text-[10px] uppercase tracking-widest flex items-center gap-2">
+    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+    STATUS: ONLINE
+  </div>
+</footer>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const dropZone = document.getElementById('drop-zone');
+    const dropInner = document.getElementById('drop-inner');
+    const fileInput = document.getElementById('file-input');
+    const defaultState = document.getElementById('drop-default');
+    const previewState = document.getElementById('drop-preview');
+    const previewImg = document.getElementById('preview-img');
+    const previewName = document.getElementById('preview-name');
+    const previewSize = document.getElementById('preview-size');
+    const submitBtn = document.getElementById('submit-btn');
+    const form = document.getElementById('upload-form');
+    const scanLine = document.getElementById('scan-line');
+
+    // Prevent default behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, preventDefaults, false);
+      document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Highlight drop area on drag
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropInner.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropInner.classList.remove('dragover'), false);
+    });
+
+    // Handle dropped files
+    dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
+    
+    // Handle click to upload
+    dropInner.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    function handleFiles(files) {
+      if (files.length === 0) return;
+      const file = files[0];
+
+      if (file.type.startsWith('image/')) {
+        // Validate size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+            alert("File is too large. Maximum size is 10MB.");
+            return;
+        }
+
+        // Assign file to input (required for drag-and-drop to submit properly)
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onloadend = () => {
+          previewImg.src = reader.result;
+          previewName.textContent = file.name;
+          previewSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+          
+          defaultState.classList.add('hidden');
+          previewState.classList.remove('hidden');
+          submitBtn.disabled = false;
+        }
+      } else {
+        alert("Invalid file format. Please upload a JPG or PNG.");
+      }
+    }
+
+    // Handle Submit Animation
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault(); // Prevent immediate submit to show animation
+      
+      // UI updates
+      submitBtn.disabled = true;
+      document.getElementById('btn-icon').textContent = 'sync';
+      document.getElementById('btn-icon').classList.add('animate-spin');
+      document.getElementById('btn-text').textContent = 'Analyzing...';
+      scanLine.classList.remove('hidden'); // Turn on the cyber scanner
+      
+      // Simulate slight delay before actually submitting the form
+      setTimeout(() => {
+         form.submit();
+      }, 800);
+    });
+  });
+</script>
+</body>
+</html>
