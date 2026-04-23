@@ -9,6 +9,7 @@ import os
 def create_app():
 
     app = Flask(__name__)
+    app.secret_key = "super_secret_trueimage_key" 
 
     app.config["UPLOAD_FOLDER"] = os.path.join(os.getcwd(), "temp_uploads")
     app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
@@ -23,7 +24,7 @@ def create_app():
     app.register_blueprint(result_bp)
 
     @app.route("/")
-    def home():
+    def index():
         return render_template("index.html")
 
     return app

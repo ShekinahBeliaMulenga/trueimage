@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const manualSubmitBtn = document.getElementById("manual-submit-btn");
   const processingModeText = document.getElementById("processing-mode-text");
 
-  const MAX_SIZE = 10 * 1024 * 1024;
+  const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
   const VALID_TYPES = ["image/jpeg", "image/png"];
 
   let currentObjectURL = null;
@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (scanLine) scanLine.classList.add("hidden");
   if (statusText) statusText.classList.add("hidden");
 
-  // Custom Alert Function (Persistent)
+  // Custom Alert Function (Persistent, No Reload Needed)
   function showCustomAlert(message) {
     // Remove any existing alert to prevent stacking
     const existingAlert = document.getElementById("custom-js-alert");
@@ -83,11 +83,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Handle Manual Submit Click
-  manualSubmitBtn.addEventListener("click", () => {
+  manualSubmitBtn.addEventListener("click", (e) => {
+    e.preventDefault(); // Prevent accidental native form submission
     manualSubmitBtn.disabled = true;
     startAutoScan();
   });
 
+  // Drag and Drop Event Listeners
   ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
     dropZone.addEventListener(eventName, preventDefaults, false);
   });
@@ -133,14 +135,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const file = files[0];
 
-    // Use the custom UI alert for wrong format
+    // Validate Format
     if (!VALID_TYPES.includes(file.type)) {
       showCustomAlert("Unsupported format. Please select a JPG or PNG image.");
       resetUpload();
       return;
     }
 
-    // Use the custom UI alert for size limit
+    // Validate Size
     if (file.size > MAX_SIZE) {
       showCustomAlert("File is too large. Maximum size is 10 MB.");
       resetUpload();
@@ -185,22 +187,57 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // ----------------------------------------------------------------------
+  // THE NEW AJAX / FETCH PIPELINE
+  // ----------------------------------------------------------------------
   function startAutoScan() {
     if (!fileInput.files || fileInput.files.length === 0) {
       return;
     }
 
-    if (statusText) {
-      statusText.textContent = "Analyzing image...";
-    }
+    // UI Updates: Show scanning state
+    if (statusText) statusText.textContent = "Analyzing image...";
+    if (scanLine) scanLine.classList.remove("hidden");
+    manualSubmitBtn.disabled = true; // Lock button during scan
 
-    if (scanLine) {
-      scanLine.classList.remove("hidden");
-    }
+    // 1. Package the file for the background request
+    const formData = new FormData(form);
 
+    // 2. Add a slight visual delay for the "Forensic Analysis" feel
     setTimeout(() => {
-      form.submit();
-    }, 700);
+      fetch("/predict", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "error") {
+          // Analysis failed (Safety filter tripped or no face detected)
+          if (scanLine) scanLine.classList.add("hidden");
+          if (statusText) statusText.textContent = "Analysis failed.";
+          
+          showCustomAlert(data.message);
+          
+          // Re-enable manual scan if applicable so they can try a new image
+          if (!autoScanToggle.checked) {
+            manualSubmitBtn.disabled = false;
+          }
+        } 
+        else if (data.status === "success") {
+          // Success! Redirect the browser to the result report URL provided by Python
+          if (statusText) statusText.textContent = "Analysis complete. Generating report...";
+          window.location.href = data.redirect_url;
+        }
+      })
+      .catch(error => {
+        // Handle server crashes or network drops
+        console.error("Network Error:", error);
+        if (scanLine) scanLine.classList.add("hidden");
+        if (statusText) statusText.textContent = "Connection error.";
+        showCustomAlert("System Error: Could not connect to the forensic analysis server.");
+        if (!autoScanToggle.checked) manualSubmitBtn.disabled = false;
+      });
+    }, 700); // 700ms UI delay
   }
 
   function resetUpload() {

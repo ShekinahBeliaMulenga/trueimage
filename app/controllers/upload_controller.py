@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, current_app, send_from_directory, redirect, url_for
+from flask import Blueprint, request, current_app, send_from_directory, url_for, jsonify
 from werkzeug.utils import secure_filename
 import os
 import random
@@ -16,35 +16,36 @@ def uploaded_file(filename):
 
 @upload_bp.route("/predict", methods=["POST"])
 def predict():
-    if "image" not in request.files:
-        return render_template("index.html", error="No file provided")
-
-    file = request.files["image"]
-
-    if file.filename == "":
-        return render_template("index.html", error="Empty filename")
-
-    if not allowed_file(file.filename):
-        return render_template(
-            "index.html",
-            error="Unsupported file format. Please upload a JPG or PNG image."
-        )
-
-    filename = secure_filename(file.filename)
-    upload_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-
     try:
+        # ---------------------------------------------------------
+        # Initial File Validation (Returning JSON 400 Bad Request)
+        # ---------------------------------------------------------
+        if "image" not in request.files:
+            return jsonify({"status": "error", "message": "System Error: No file stream detected in payload."}), 400
+
+        file = request.files["image"]
+
+        if file.filename == "":
+            return jsonify({"status": "error", "message": "Upload rejected: Empty filename detected."}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({"status": "error", "message": "Unsupported file format. Please upload a standard JPG or PNG image."}), 400
+
+        # ---------------------------------------------------------
+        # File Saving
+        # ---------------------------------------------------------
+        filename = secure_filename(file.filename)
+        upload_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
         file.save(upload_path)
 
         # ---------------------------------------------------------
         # Step 1: Explicit-content screening (Fail-Fast)
         # ---------------------------------------------------------
         moderation_result = current_app.explicit_detector.predict(upload_path)
-
+        
         if moderation_result.verdict in ["EXPLICIT", "SUGGESTIVE"]:
-            # Delete the file immediately to uphold privacy/safety
             os.remove(upload_path)
-            return render_template("index.html", error=moderation_result.message)
+            return jsonify({"status": "error", "message": moderation_result.message}), 400
 
         # Output paths
         output_filename = f"processed_{filename}"
@@ -56,29 +57,30 @@ def predict():
         detection = current_app.face_detector.process_image(upload_path, output_path)
 
         if not detection.success:
-            # Rejects with standard UI format if no face or bad read
-            return render_template("index.html", error=detection.error_message)
+            return jsonify({"status": "error", "message": detection.error_message}), 400
 
         # ---------------------------------------------------------
         # Step 3: Model inference (Currently Mocked)
         # ---------------------------------------------------------
-        # In the future, this is where your EfficientNetV2-S model logic goes
         raw_probability = random.random()
 
         # ---------------------------------------------------------
-        # Step 4: Redirect to Result Controller
+        # Step 4: Return Success JSON with the Redirect URL
         # ---------------------------------------------------------
-        return redirect(url_for("result.show_result", 
-                                filename=output_filename, 
-                                probability=raw_probability, 
-                                faces=detection.face_count))
+        redirect_url = url_for("result.show_result", 
+                               filename=output_filename, 
+                               probability=raw_probability, 
+                               faces=detection.face_count)
+        
+        return jsonify({"status": "success", "redirect_url": redirect_url}), 200
 
     except Exception as e:
-        return render_template("index.html", error=str(e))
+        # Catch unexpected server errors
+        return jsonify({"status": "error", "message": f"System Exception: {str(e)}"}), 500
 
     finally:
         # Cleanup original un-annotated upload
-        if os.path.exists(upload_path):
+        if 'upload_path' in locals() and os.path.exists(upload_path):
             try:
                 os.remove(upload_path)
             except OSError:

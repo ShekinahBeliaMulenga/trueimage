@@ -6,7 +6,7 @@
   <title>Analysis Results | TrueImage</title>
 
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
   <script>
@@ -15,19 +15,24 @@
       theme: {
         extend: {
           colors: {
-            "primary-container": "#c084fc", // Vibrant Purple
-            "background": "#0f0e13",        // Deeper Dark background
+            "primary-container": "#c084fc",
+            "on-primary": "#31004a",
+            "background": "#0f0e13", // Lightened from #0a0a0c to match your index.html
             "outline-variant": "#3f3a4b",
             "outline": "#8b8495",
+            "surface": "#1a1820", // Lightened surface for better separation
             "surface-container-low": "#1a1820",
+            "surface-container-lowest": "#0e0e0e",
             "surface-container-high": "#282431",
-            "success": "#c084fc",           // Purple as the "Success/Real" indicator
-            "warning": "#fbbf24",           // Amber for caution
-            "danger": "#f43f5e"             // Rose-Red for danger
+            "surface-container": "#201f1f",
+            // Upgraded Cyber-Forensic Semantic Colors
+            "success": "#10b981", 
+            "warning": "#eab308", 
+            "danger": "#ef4444"   
           },
           fontFamily: {
-            "headline": ["Space Grotesk"],
-            "body": ["Inter"]
+            "headline": ["Space Grotesk", "sans-serif"],
+            "body": ["Inter", "sans-serif"]
           }
         }
       }
@@ -36,97 +41,161 @@
 
   <style>
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+    
+    /* Subtle Hybrid Grid */
     .technical-grid {
-      /* Radial gradient adjusted to a soft purple glow */
-      background-image: radial-gradient(rgba(192, 132, 252, 0.04) 1px, transparent 1px);
+      background-image: radial-gradient(rgba(192, 132, 252, 0.05) 1px, transparent 1px);
       background-size: 24px 24px;
     }
-    .purple-glow {
-      box-shadow: 0 0 20px -5px rgba(192, 132, 252, 0.3);
+    
+    /* Forensic Scan Overlay */
+    .scan-overlay {
+      background: linear-gradient(to bottom, transparent 50%, rgba(192, 132, 252, 0.04) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
     }
+
+    /* Ambient UI Glows */
+    .ambient-glow { box-shadow: 0 0 50px -15px rgba(192, 132, 252, 0.08); }
+    .glow-success { box-shadow: 0 0 40px -10px rgba(16, 185, 129, 0.15); }
+    .glow-warning { box-shadow: 0 0 40px -10px rgba(234, 179, 8, 0.15); }
+    .glow-danger { box-shadow: 0 0 40px -10px rgba(239, 68, 68, 0.15); }
   </style>
 </head>
 
-<body class="bg-background text-[#e5e2e1] font-body min-h-screen flex flex-col">
+<body class="bg-background text-[#e5e2e1] font-body min-h-screen flex flex-col technical-grid">
   
-  <header class="bg-[#0f0e13]/95 backdrop-blur-md flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50 border-b border-white/5">
-    <div class="text-xl font-bold tracking-tighter text-primary-container uppercase font-headline">TrueImage</div>
-    <div class="text-xs font-mono text-outline uppercase tracking-widest">Analysis Dashboard</div>
+  <header class="bg-[#0f0e13]/90 backdrop-blur-md border-b border-white/5 flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50">
+    <div class="text-xl font-bold tracking-tighter text-primary-container uppercase font-headline flex items-center gap-2">
+      <span class="material-symbols-outlined text-xl">fingerprint</span>
+      TrueImage
+    </div>
+    <nav class="hidden md:flex items-center space-x-8">
+      <span class="text-primary-container border-b border-primary-container pb-1 text-sm font-medium uppercase tracking-wider">Analysis Result</span>
+    </nav>
+    <div class="flex items-center space-x-4">
+      <span class="material-symbols-outlined text-zinc-500">memory</span>
+    </div>
   </header>
 
-  <main class="flex-grow pt-28 pb-16 px-6 lg:px-12 technical-grid">
-    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+  <main class="flex-grow pt-32 pb-16 px-6 lg:px-12 flex items-center justify-center">
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
 
-      <div class="lg:col-span-5">
-        <div class="relative bg-surface-container-low p-1 border border-outline-variant/30 purple-glow">
-          <img class="w-full h-auto" src="{{ image_path }}" alt="Processed results" />
-          <div class="absolute top-2 left-2 bg-black/80 px-2 py-1 text-[10px] font-mono text-primary-container border border-primary-container/30 uppercase tracking-widest">
-            Scan Complete
+      <div class="lg:col-span-5 space-y-4">
+        
+        <div class="relative bg-surface border border-outline-variant/30 p-2 ambient-glow group">
+          <div class="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-primary-container"></div>
+          <div class="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary-container"></div>
+          <div class="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-primary-container"></div>
+          <div class="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-primary-container"></div>
+
+          <div class="relative overflow-hidden border border-white/5">
+            <div class="absolute inset-0 scan-overlay z-10 mix-blend-overlay"></div>
+            <img class="w-full h-auto object-cover grayscale-[15%] relative z-0" src="{{ image_path }}" alt="Processed results" />
+            
+            <div class="absolute top-3 left-3 bg-black/80 px-2 py-1 text-[9px] font-mono text-primary-container border border-primary-container/30 uppercase tracking-widest z-20 backdrop-blur-sm flex items-center gap-2">
+              <span class="w-1.5 h-1.5 bg-primary-container rounded-full animate-pulse"></span>
+              Subject Locked
+            </div>
           </div>
         </div>
-        <div class="mt-4 flex justify-between font-mono text-[10px] text-outline uppercase tracking-widest">
-          <span>Target Identity</span>
-          <span>{{ face_count }} Face(s) Detected</span>
+
+        <div class="grid grid-cols-2 gap-2 font-mono text-[9px] text-outline uppercase tracking-widest bg-surface p-3 border border-outline-variant/20">
+          <div>
+            <span class="block text-zinc-500 mb-0.5">Faces Detected</span>
+            <span class="text-primary-container">{{ face_count }}</span>
+          </div>
+          <div>
+            <span class="block text-zinc-500 mb-0.5">Extraction Node</span>
+            <span class="text-primary-container">V2-S.Core</span>
+          </div>
         </div>
       </div>
 
-      <div class="lg:col-span-7 space-y-8">
-        <div>
-          <h1 class="font-headline text-4xl lg:text-5xl font-black tracking-tighter uppercase leading-none mb-2">
-            Verification <br/> <span class="text-primary-container">Report</span>
+      <div class="lg:col-span-7 space-y-6 lg:mt-4">
+        
+        <div class="mb-8">
+          <div class="text-[10px] text-primary-container uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[14px]">analytics</span>
+            Diagnostic Dashboard
+          </div>
+          <h1 class="font-headline text-4xl lg:text-5xl font-black tracking-tighter uppercase leading-none text-white">
+            Verification <br/> <span class="text-zinc-500">Report</span>
           </h1>
         </div>
 
-        {% set border_color = 'border-success' if result_label == 'REAL' else ('border-warning' if result_label == 'UNCERTAIN' else 'border-danger') %}
-        {% set text_color = 'text-success' if result_label == 'REAL' else ('text-warning' if result_label == 'UNCERTAIN' else 'text-danger') %}
+        {% set theme_color = 'success' if result_label == 'REAL' else ('warning' if result_label == 'UNCERTAIN' else 'danger') %}
         
-        <div class="bg-surface-container-low border-l-4 {{ border_color }} p-8 shadow-2xl">
-          <div class="flex justify-between items-end mb-6">
+        <div class="bg-white/[0.02] border border-white/[0.04] p-8 mb-8 relative overflow-hidden glow-{{ theme_color }}">
+          <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-{{ theme_color }} shadow-[0_0_15px_currentColor] text-{{ theme_color }}"></div>
+          
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 pl-4">
             <div>
-              <span class="text-[10px] text-outline uppercase tracking-[0.2em] block mb-1">Result</span>
-              <div class="text-4xl font-headline font-black tracking-tighter {{ text_color }}">
+              <span class="text-[9px] text-outline uppercase tracking-[0.2em] block mb-2">Final Verdict</span>
+              <div class="text-4xl md:text-5xl font-headline font-black tracking-tighter text-{{ theme_color }}">
                 {{ result_label }}
               </div>
             </div>
-            <div class="text-right">
-              <span class="text-[10px] text-outline uppercase tracking-[0.2em] block mb-1">Confidence</span>
-              <div class="text-3xl font-headline font-light text-white tracking-tighter">
-                {{ confidence }}%
+            
+            <div class="w-full md:w-48">
+              <div class="flex justify-between items-end mb-1">
+                <span class="text-[9px] text-outline uppercase tracking-[0.2em]">Confidence</span>
+                <span class="text-xl font-headline font-bold text-white tracking-tighter">{{ confidence }}%</span>
+              </div>
+              <div class="h-1.5 w-full bg-surface-container-highest bg-black border border-white/5 overflow-hidden">
+                <div class="h-full bg-{{ theme_color }} shadow-[0_0_10px_currentColor] text-{{ theme_color }}" style="width: {{ confidence }}%"></div>
               </div>
             </div>
           </div>
 
-          <p class="text-sm border-t border-outline-variant/20 pt-6 text-on-surface-variant italic">
-            "{{ user_message }}"
-          </p>
+          <div class="pl-4">
+            <div class="p-5 bg-black/60 border border-white/10 text-sm text-white font-mono tracking-wide leading-relaxed border-l-2 border-l-primary-container shadow-inner">
+              > {{ user_message }}
+            </div>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <div class="bg-surface-container-low border border-outline-variant/20 p-4 transition-colors hover:border-primary-container/30">
-            <div class="text-[9px] text-outline uppercase tracking-widest mb-1">AI Synthesis Prob.</div>
-            <div class="text-lg font-headline font-bold text-white">{{ ai_probability }}%</div>
+          <div class="bg-surface border border-outline-variant/20 p-5 relative group hover:border-primary-container/30 transition-colors">
+            <div class="text-[9px] text-outline uppercase tracking-widest mb-3 flex items-center justify-between">
+              Synthesis Score
+              <span class="material-symbols-outlined text-[12px] text-zinc-600">memory_alt</span>
+            </div>
+            <div class="text-2xl font-headline font-bold text-white mb-3">{{ ai_probability }}%</div>
+            <div class="h-[1px] w-full bg-white/10">
+              <div class="h-full bg-primary-container" style="width: {{ ai_probability }}%"></div>
+            </div>
           </div>
-          <div class="bg-surface-container-low border border-outline-variant/20 p-4 transition-colors hover:border-primary-container/30">
-            <div class="text-[9px] text-outline uppercase tracking-widest mb-1">Face Count</div>
-            <div class="text-lg font-headline font-bold text-white">{{ face_count }}</div>
+          
+          <div class="bg-surface border border-outline-variant/20 p-5 relative group hover:border-primary-container/30 transition-colors">
+             <div class="text-[9px] text-outline uppercase tracking-widest mb-3 flex items-center justify-between">
+              Spatial Detection
+              <span class="material-symbols-outlined text-[12px] text-zinc-600">crop_free</span>
+            </div>
+            <div class="text-2xl font-headline font-bold text-white mb-3">{{ face_count }} <span class="text-sm font-normal text-zinc-500">Faces</span></div>
+            <div class="h-[1px] w-full bg-white/10">
+              <div class="h-full bg-zinc-500" style="width: 100%"></div>
+            </div>
           </div>
         </div>
 
-        <a href="/" class="block w-full py-4 border border-primary-container text-primary-container text-center font-headline font-bold text-xs tracking-[0.2em] uppercase hover:bg-primary-container hover:text-black transition-all duration-300">
-          Run New Analysis
+        <a href="/" class="mt-4 block w-full py-4 bg-white/[0.02] border border-white/10 text-white text-center font-headline font-medium text-xs tracking-[0.2em] uppercase hover:bg-primary-container hover:border-primary-container hover:text-black transition-all duration-300">
+          Initialize New Scan
         </a>
+
       </div>
     </div>
   </main>
 
-  <footer class="mt-auto py-6 px-8 border-t border-white/5 bg-[#0f0e13]">
-    <div class="flex justify-between items-center text-[10px] text-outline uppercase tracking-[0.2em]">
-      <span>© 2026 TrueImage System</span>
-      <span class="flex items-center gap-2">
-        <span class="w-1.5 h-1.5 bg-primary-container rounded-full animate-pulse"></span>
-        Core Systems Operational
-      </span>
+  <footer class="bg-[#0f0e13] border-t border-white/5 flex flex-col md:flex-row justify-between items-center w-full px-8 py-6 mt-auto">
+    <div class="text-[10px] text-zinc-500 uppercase tracking-widest mb-4 md:mb-0">
+      TrueImage System &copy; 2026 Shekinah B Mulenga
+    </div>
+    <div class="text-[10px] text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+      Zero Retention Policy
     </div>
   </footer>
+
 </body>
 </html>
