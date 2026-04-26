@@ -1,4 +1,5 @@
 from flask import Blueprint, request, render_template
+from app.services.result_interpreter import ResultInterpreter
 
 result_bp = Blueprint("result", __name__)
 
@@ -8,37 +9,30 @@ def show_result():
     filename = request.args.get("filename")
     probability = request.args.get("probability", type=float)
     face_count = request.args.get("faces", type=int, default=0)
+    # NEW: Capture the processing duration sent from the upload step
+    scan_time = request.args.get("scan_time", type=float, default=0.0)
 
     # Fallback if accessed directly without data
     if not filename or probability is None:
-        return render_template("index.html", error="No analysis data found. Please run a new scan.")
+        return render_template(
+            "index.html", 
+            error="No analysis data found. Please run a new scan."
+        )
 
     # 2. Reconstruct the image URL
     image_url = f"/temp_uploads/{filename}"
 
-    # 3. Interpretation Logic (Translating raw math into Forensic UI labels)
-    ai_probability = round(probability * 100, 1)
-    confidence_score = ai_probability
+    # 3. Call the logic service to interpret the raw math
+    interpretation = ResultInterpreter.analyze(probability)
 
-    if ai_probability <= 40:
-        label = "REAL"
-        user_message = "Neural scan complete. The image appears to be a real photograph."
-        # For 'REAL', confidence is the inverse of the AI probability
-        confidence_score = round((1 - probability) * 100, 1)
-    elif ai_probability < 75:
-        label = "UNCERTAIN"
-        user_message = "The analysis is inconclusive. Manual review is recommended."
-    else:
-        label = "AI-GENERATED"
-        user_message = "Neural scan complete. Synthetic characteristics were detected in the image."
-
-    # 4. Render the purple dashboard
+    # 4. Render the dashboard with all metadata, including the new scan_time
     return render_template(
         "result.html",
-        result_label=label,
-        confidence=confidence_score,
-        ai_probability=ai_probability,
-        user_message=user_message,
+        result_label=interpretation.label,
+        confidence=interpretation.confidence_score,
+        ai_probability=interpretation.ai_probability,
+        user_message=interpretation.user_message,
         image_path=image_url,
-        face_count=face_count
+        face_count=face_count,
+        scan_time=scan_time  # Pass to HTML
     )

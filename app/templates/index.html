@@ -1,251 +1,231 @@
 <!DOCTYPE html>
 <html class="dark" lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>TrueImage - Authenticity Analysis</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        colors: {
-          "primary-container": "#c084fc",
-          "on-primary": "#31004a",
-          "background": "#0f0e13",
-          "outline-variant": "#3f3a4b",
-          "outline": "#8b8495",
-          "surface": "#0f0e13",
-          "primary": "#f3e8ff",
-          "on-surface-variant": "#b9cacb",
-          "on-surface": "#e5e2e1",
-          "surface-container-low": "#1a1820",
-          "surface-container-lowest": "#0e0e0e",
-          "surface-container-high": "#282431",
-          "surface-container": "#201f1f"
-        },
-        borderRadius: {
-          "DEFAULT": "0px",
-          "lg": "0px",
-          "xl": "0px",
-          "full": "9999px"
-        },
-        fontFamily: {
-          "headline": ["Space Grotesk"],
-          "body": ["Inter"]
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
+  <title>TrueImage — Authenticity Analysis</title>
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary-container": "#c084fc",
+            "on-primary":        "#31004a",
+            "background":        "#080810",
+            "outline-variant":   "#2e2b38",
+            "outline":           "#6b6578",
+            "surface":           "#0f0e18",
+            "surface-container-low":    "#13111d",
+            "surface-container-lowest": "#08080f",
+            "surface-container-high":   "#1e1b2a",
+            "surface-container":        "#161421",
+            "success": "#10b981",
+            "warning": "#f59e0b",
+            "danger":  "#ef4444",
+            "accent":  "#c084fc"
+          },
+          fontFamily: {
+            "headline": ["Syne", "sans-serif"],
+            "body":     ["DM Sans", "sans-serif"],
+            "mono":     ["JetBrains Mono", "monospace"]
+          }
         }
       }
     }
-  }
-</script>
-<style>
-  .scan-line {
-    position: absolute;
-    width: 100%;
-    height: 2px;
-    background: #c084fc;
-    top: 0;
-    left: 0;
-    animation: scanning 2.2s linear infinite;
-    z-index: 10;
-    box-shadow: 0 0 10px #c084fc, 0 0 5px #c084fc;
-  }
+  </script>
 
-  @keyframes scanning {
-    0%   { top: 0%; opacity: 0; }
-    5%   { opacity: 1; }
-    95%  { opacity: 1; }
-    100% { top: 100%; opacity: 0; }
-  }
-
-  .ghost-border {
-    border: 1px solid rgba(139, 132, 149, 0.2);
-  }
-
-  .ambient-glow {
-    box-shadow: 0 0 60px -15px rgba(192, 132, 252, 0.1);
-  }
-
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-  }
-
-  #drop-zone {
-    transition: all 0.3s ease;
-  }
-
-  .dragover {
-    border-color: #c084fc !important;
-    background-color: #1a1820 !important;
-    box-shadow: inset 0 0 30px rgba(192, 132, 252, 0.1) !important;
-  }
-
-  .technical-grid {
-    background-image: radial-gradient(rgba(192, 132, 252, 0.05) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-
-  /* Toggle Switch Styles */
-  input:checked ~ .toggle-bg { border-color: #c084fc; }
-  input:checked ~ .toggle-dot { transform: translateX(100%); background-color: #c084fc; }
-</style>
 </head>
-<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary technical-grid">
 
-<header class="bg-[#0f0e13]/90 backdrop-blur-md border-b border-white/5 flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50">
-  <div class="text-xl font-bold tracking-tighter text-primary-container uppercase font-headline flex items-center gap-2">
-    <span class="material-symbols-outlined text-xl">fingerprint</span>
-    TrueImage
-  </div>
-  <nav class="hidden md:flex items-center space-x-8">
-    <span class="text-primary-container border-b border-primary-container pb-1 text-sm font-medium uppercase tracking-wider">Workbench</span>
-  </nav>
-  <div class="flex items-center space-x-4">
-    <span class="material-symbols-outlined text-zinc-500">memory</span>
-  </div>
-</header>
+<body class="text-[#ddd9e8] font-body min-h-screen flex flex-col relative z-10 selection:bg-primary-container selection:text-on-primary">
 
-<main class="min-h-screen pt-32 pb-24 px-6 flex flex-col items-center justify-center">
+  <div class="bg-blob-1"></div>
+  <div class="bg-blob-2"></div>
 
-  <div class="text-center mb-10 w-full max-w-4xl">
-    <h1 class="font-headline font-black text-4xl md:text-6xl tracking-tighter uppercase text-primary mb-3">
-      Authenticity Analysis
-    </h1>
-    <div class="flex flex-wrap items-center justify-center gap-4 text-primary-container text-[10px] md:text-xs tracking-[0.2em] uppercase">
-      <span class="flex items-center">
-        <span class="w-1.5 h-1.5 bg-primary-container mr-2 animate-pulse"></span>
-        System Ready
-      </span>
-      <span class="flex items-center">
-        <span class="w-1.5 h-1.5 bg-zinc-600 mr-2"></span>
-        Image Pipeline Active
-      </span>
-    </div>
-  </div>
+  <header class="bg-[#080810]/95 backdrop-blur-lg border-b border-white/[0.04] flex justify-between items-center w-full px-6 py-3.5 fixed top-0 z-50">
+    <a href="{{ url_for('index') }}" class="flex items-center gap-3 hover:opacity-75 transition-opacity cursor-pointer group">
+      <div class="logo-glyph">
+        <span class="material-symbols-outlined text-[15px] text-primary-container">fingerprint</span>
+      </div>
+      <span class="text-white font-headline font-bold tracking-widest text-sm uppercase">True<span class="text-primary-container">Image</span></span>
+    </a>
 
-  <div class="w-full max-w-3xl relative">
-    <div class="absolute -top-6 -left-2 text-[9px] text-outline uppercase tracking-widest opacity-60 hidden md:block">
-      Drag Drop Interface v2.04
-    </div>
-    <div class="absolute -top-6 -right-2 text-[9px] text-right text-outline uppercase tracking-widest opacity-60 hidden md:block">
-      Mode: <span id="processing-mode-text" class="text-primary-container">Auto</span>
+    <div class="hidden md:flex items-center gap-6">
+      <span class="text-primary-container font-mono text-[10px] uppercase tracking-[0.22em] border-b border-primary-container/40 pb-0.5">Workbench</span>
     </div>
 
-    <form id="upload-form" action="/predict" method="POST" enctype="multipart/form-data">
-      <input type="file" id="file-input" name="image" accept=".jpg,.jpeg,.png" class="hidden"/>
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 border border-white/[0.06] bg-white/[0.02]">
+        <span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+        <span class="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">System Ready</span>
+      </div>
+      <span class="material-symbols-outlined text-[18px] text-zinc-700">memory</span>
+    </div>
+  </header>
 
-      <div class="relative bg-surface-container-low ghost-border p-1 ambient-glow cursor-pointer overflow-hidden mt-4 md:mt-0" id="drop-zone">
-        <div class="relative bg-surface-container-lowest border border-dashed border-primary-container/20 h-[350px] md:h-[400px] flex flex-col items-center justify-center transition-all duration-300 hover:border-primary-container/50 hover:bg-surface-container-low" id="drop-inner">
+  <main class="flex-grow pt-28 pb-12 px-5 lg:px-12 flex flex-col items-center justify-center relative z-10">
 
-          <div class="scan-line hidden" id="scan-line"></div>
+    <div class="text-center mb-6 w-full max-w-3xl fade-up-element">
+      <div class="flex items-center justify-center gap-3 mb-3">
+        <div class="flex-1 fancy-divider max-w-[80px]"></div>
+        <div class="flex items-center gap-2 font-mono text-[9px] text-primary-container uppercase tracking-[0.22em]">
+          <span class="material-symbols-outlined text-[12px]">analytics</span>
+          Image Forensics Platform
+        </div>
+        <div class="flex-1 fancy-divider max-w-[80px]"></div>
+      </div>
 
-          <div class="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-primary-container"></div>
-          <div class="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary-container"></div>
-          <div class="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-primary-container"></div>
-          <div class="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-primary-container"></div>
+      <h1 class="font-headline font-extrabold text-[20px] md:text-[30px] tracking-tight uppercase leading-[0.92] text-white mb-2">
+        Authenticity<br><span class="text-outline text-[0.85em]" style="font-weight:400;">Analysis</span>
+      </h1>
 
-          <div class="relative z-20 flex flex-col items-center text-center px-6 w-full" id="drop-default">
-            <span class="material-symbols-outlined text-primary-container text-5xl md:text-6xl mb-4 opacity-80" style="font-variation-settings:'wght' 100">data_object</span>
-            <h2 class="font-headline font-bold text-xl md:text-2xl text-on-surface tracking-tight mb-3 uppercase">
-              Select Image for Analysis
-            </h2>
-            <p class="text-zinc-500 text-xs md:text-sm max-w-sm uppercase tracking-tight font-light leading-relaxed">
-              Drag and drop a JPG or PNG file here, or click to browse.
-            </p>
-          </div>
+      <div class="flex flex-wrap items-center justify-center gap-5 mt-4 text-[9px] font-mono uppercase tracking-[0.18em]">
+        <span class="flex items-center gap-2 text-zinc-500">
+          <span class="w-1 h-1 bg-primary-container rounded-full animate-pulse"></span>
+          Pipeline Active
+        </span>
+        <span class="text-zinc-700">·</span>
+        <span class="flex items-center gap-2 text-zinc-500">
+          Mode: <span id="processing-mode-text" class="text-primary-container ml-1">Auto</span>
+        </span>
+      </div>
+    </div>
 
-          <div class="relative z-20 flex flex-col items-center text-center px-4 hidden w-full h-full justify-center bg-surface-container-lowest/90" id="drop-preview">
-            <div class="relative p-2 border border-primary-container/30 bg-black mb-4 group">
-              <img id="preview-img" src="" alt="Preview" class="h-40 md:h-56 object-contain"/>
-              <div class="absolute inset-0 bg-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span class="bg-black/80 text-primary-container text-xs px-3 py-1 uppercase tracking-widest border border-primary-container/50">
-                  Change Image
-                </span>
+    <div class="w-full max-w-2xl relative fade-up-element delay-100">
+
+      <form id="upload-form" action="/predict" method="POST" enctype="multipart/form-data">
+        <input type="file" id="file-input" name="image" accept=".jpg,.jpeg,.png" class="hidden"/>
+
+        <div class="relative bracket-corner ambient-glow" style="padding:2px; background: linear-gradient(135deg, rgba(192,132,252,0.15), rgba(192,132,252,0.04) 50%, rgba(192,132,252,0.1)); border-radius:0;">
+          <span></span>
+          
+          <div id="drop-zone" class="relative bg-surface-container-lowest cursor-pointer">
+            
+            <div id="drop-inner" class="relative border border-dashed border-primary-container/20 h-[280px] md:h-[350px] flex flex-col items-center justify-center overflow-hidden">
+              
+              <div class="absolute inset-0 scan-overlay z-0 opacity-50 pointer-events-none mix-blend-overlay"></div>
+
+              <div class="hidden" id="scan-line"></div>
+
+              <div class="absolute top-3 left-4 font-mono text-[7px] text-primary-container/25 uppercase tracking-[0.28em] select-none hidden sm:block">Status: Idle</div>
+              <div class="absolute bottom-3 right-4 font-mono text-[7px] text-primary-container/25 uppercase tracking-[0.28em] select-none hidden sm:block">Awaiting_Input</div>
+
+              <div class="relative z-20 flex flex-col items-center text-center px-6 w-full" id="drop-default">
+                
+                <div class="relative flex items-center justify-center mb-5 w-[72px] h-[72px]">
+                  <div class="orbit-ring absolute inset-0 rounded-full border border-dashed border-primary-container/25"></div>
+                  <div class="orbit-ring-rev absolute inset-[6px] rounded-full border border-primary-container/10"></div>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="absolute w-full h-px bg-primary-container/12"></div>
+                    <div class="absolute h-full w-px bg-primary-container/12"></div>
+                  </div>
+                  <div class="relative z-10 bg-[#08080f] p-2.5 border border-primary-container/15">
+                    <span class="material-symbols-outlined text-primary-container text-[28px]" style="font-variation-settings:'wght' 200">data_object</span>
+                  </div>
+                </div>
+
+                <h2 class="font-headline font-bold text-base md:text-lg text-white tracking-tight mb-1.5 uppercase">
+                  Select Image for Analysis
+                </h2>
+                <p class="text-zinc-600 text-[10px] max-w-xs uppercase tracking-wider font-mono leading-relaxed">
+                  Drag &amp; drop a JPG or PNG — or click to browse
+                </p>
               </div>
-            </div>
-            <p id="preview-name" class="text-xs text-primary-container mb-1 truncate max-w-[250px]"></p>
-            <p id="preview-size" class="text-[10px] text-outline tracking-widest"></p>
 
-            <div id="status-text" class="mt-4 text-xs uppercase tracking-widest text-zinc-500 hidden">
-              Preparing analysis...
+              <div class="relative z-20 flex flex-col items-center text-center px-4 hidden w-full h-full justify-center bg-[#08080f]/95 backdrop-blur-sm" id="drop-preview">
+                <div class="relative p-1.5 border border-primary-container/25 bg-black mb-3 group">
+                  <img id="preview-img" src="" alt="Preview" class="h-32 md:h-48 object-contain block"/>
+                  
+                  <div class="absolute inset-0 bg-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span class="bg-black/85 text-primary-container font-mono text-[9px] px-3 py-1.5 uppercase tracking-widest border border-primary-container/40">
+                      Change Image
+                    </span>
+                  </div>
+                </div>
+                <p id="preview-name" class="font-mono text-[10px] text-primary-container mb-1 truncate max-w-[240px]"></p>
+                <p id="preview-size" class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest"></p>
+                
+                <div id="status-text" class="mt-3 font-mono text-[9px] uppercase tracking-widest text-zinc-500 hidden flex items-center gap-2">
+                  <span class="w-1 h-1 bg-primary-container rounded-full animate-pulse"></span>
+                  Preparing analysis…
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="flex items-center space-x-2 md:space-x-4 w-full sm:w-auto">
-          <div class="bg-surface-container-high px-4 py-2 border-l-2 border-primary-container flex-1 sm:flex-none">
-            <span class="block text-[9px] text-outline uppercase tracking-widest mb-1">Formats</span>
-            <span class="block font-headline font-bold text-primary-container text-sm">JPG · PNG</span>
-          </div>
-          <div class="bg-surface-container-high px-4 py-2 border-l-2 border-primary-container flex-1 sm:flex-none">
-            <span class="block text-[9px] text-outline uppercase tracking-widest mb-1">Max Size</span>
-            <span class="block font-headline font-bold text-primary-container text-sm">10 MB</span>
-          </div>
-        </div>
+        <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 fade-up-element delay-200">
 
-        <div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          <label class="flex items-center cursor-pointer gap-3 group" aria-label="Toggle Auto Scan">
-            <div class="relative">
-              <input type="checkbox" id="auto-scan-toggle" class="sr-only" checked>
-              <div class="block bg-surface-container-lowest border border-zinc-700 w-10 h-6 transition-colors duration-300 toggle-bg"></div>
-              <div class="toggle-dot absolute left-1 top-1 bg-zinc-600 w-4 h-4 transition-transform duration-300"></div>
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <div class="stat-card bg-[#0f0e1a]/80 border border-outline-variant/20 px-4 py-2 border-l-2 border-l-primary-container flex-1 sm:flex-none">
+              <span class="block font-mono text-[7px] text-zinc-600 uppercase tracking-widest mb-0.5">Formats</span>
+              <span class="block font-headline font-bold text-primary-container text-[11px] tracking-wider">JPG · PNG</span>
             </div>
-            <span id="toggle-label" class="text-xs uppercase tracking-[0.15em] text-primary-container transition-colors duration-300">
-              Auto Scan: ON
-            </span>
-          </label>
+            <div class="stat-card bg-[#0f0e1a]/80 border border-outline-variant/20 px-4 py-2 border-l-2 border-l-primary-container flex-1 sm:flex-none">
+              <span class="block font-mono text-[7px] text-zinc-600 uppercase tracking-widest mb-0.5">Max Size</span>
+              <span class="block font-headline font-bold text-primary-container text-[11px] tracking-wider">10 MB</span>
+            </div>
+          </div>
 
-          <button type="button" id="manual-submit-btn" 
-                  class="hidden w-full sm:w-auto border border-primary-container bg-primary-container/10 text-primary-container font-headline font-bold text-xs tracking-[0.15em] px-6 py-3 uppercase hover:bg-primary-container hover:text-on-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-            Scan Image
-          </button>
-        </div>
-      </div>
-    </form>
+          <div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto justify-end mt-4 sm:mt-0">
 
-    {% if result or image_path %}
-    <div class="mt-8 space-y-4">
-      {% if result %}
-      <div class="text-green-400 text-center border border-green-500/20 bg-green-950/20 px-4 py-3 font-mono">
-        {{ result }}
-      </div>
-      {% endif %}
+            <label class="flex items-center justify-center sm:justify-start cursor-pointer gap-2.5 group w-full sm:w-auto" aria-label="Toggle Auto Scan">
+              <div class="relative">
+                <input type="checkbox" id="auto-scan-toggle" class="sr-only" checked>
+                <div class="block bg-surface-container-lowest border border-zinc-700 w-10 h-6 transition-colors duration-300 toggle-bg"></div>
+                <div class="toggle-dot absolute left-1 top-1 bg-zinc-600 w-4 h-4 transition-all duration-300"></div>
+              </div>
+              <span id="toggle-label" class="font-mono text-[9px] uppercase tracking-[0.15em] text-primary-container transition-colors duration-300">
+                Auto Scan: ON
+              </span>
+            </label>
 
-      {% if image_path %}
-      <div class="flex flex-col items-center gap-3">
-        <div class="text-xs uppercase tracking-[0.15em] text-zinc-500">Detection Output</div>
-        <img src="{{ image_path }}" alt="Processed image" class="max-h-96 border border-primary-container/30">
-      </div>
-      {% endif %}
+            <button type="button" id="manual-submit-btn" 
+                    class="hidden w-full sm:w-auto border border-primary-container bg-primary-container/10 text-primary-container font-headline font-bold text-[10px] tracking-[0.18em] px-5 py-2.5 uppercase hover:bg-primary-container hover:text-black transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed">
+              Scan Image
+            </button>
+          </div>
+
+      </form>
     </div>
-    {% endif %}
-  </div>
 
-  <div class="mt-12 max-w-2xl text-center space-y-3 mx-auto">
-    <p class="text-[10px] text-zinc-500 uppercase tracking-widest">
-      Privacy Notice: Images are processed temporarily in volatile memory and automatically deleted post-inference. Zero permanent retention.
-    </p>
-    <p class="text-[10px] text-zinc-500 uppercase tracking-widest border-t border-zinc-800 pt-3">
-      Ethical Constraint & Limitations: The TrueImage system evaluates standard human portraits only. Explicit content moderation is active; NSFW or unsafe imagery will be automatically flagged and rejected prior to analysis.
-    </p>
-  </div>
-</main>
+    <div class="mt-8 max-w-lg text-center mx-auto fade-up-element delay-300">
+      <div class="flex items-center justify-center gap-4">
+        <div class="flex-1 max-w-[60px]" style="height:1px;background:linear-gradient(to right, transparent, rgba(255,255,255,0.06));"></div>
+        <p class="font-mono text-[8px] text-zinc-700 uppercase tracking-widest leading-relaxed">
+          Zero permanent retention<br/>NSFW content rejected prior to analysis
+        </p>
+        <div class="flex-1 max-w-[60px]" style="height:1px;background:linear-gradient(to left, transparent, rgba(255,255,255,0.06));"></div>
+      </div>
+    </div>
 
-<footer class="bg-[#0a0a0a] border-t border-white/5 flex flex-col md:flex-row justify-between items-center w-full px-8 py-6 mt-auto">
-  <div class="text-xs font-black text-primary-container font-headline uppercase tracking-widest mb-4 md:mb-0">
-    TrueImage System &copy; 2026 Shekinah B Mulenga
-  </div>
-  <div class="text-zinc-600 text-[10px] uppercase tracking-widest flex items-center gap-2">
-    <span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
-    Status: Online
-  </div>
-</footer>
+  </main>
 
-<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+  <footer class="relative z-10 border-t border-white/[0.04] bg-[#080810]/85 backdrop-blur-md px-8 py-4 fade-up-element delay-400">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <div class="logo-glyph" style="width:20px;height:20px;">
+            <span class="material-symbols-outlined text-[10px] text-primary-container">fingerprint</span>
+          </div>
+          <span class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">TrueImage &copy; 2026</span>
+        </div>
+        <div class="h-3 w-px bg-white/10 hidden sm:block"></div>
+        <span class="font-mono text-[9px] text-zinc-700 hidden sm:block">Shekinah B Mulenga</span>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+        <span class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">Status: Online</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
 </body>
 </html>
