@@ -291,6 +291,27 @@
     </div>
   </footer>
 
+  <div id="purge-overlay" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-1000">
+    
+    <div class="flex items-center gap-3 mb-4">
+      <span class="material-symbols-outlined text-4xl text-danger animate-pulse">gpp_bad</span>
+    </div>
+    
+    <h1 class="font-headline font-bold text-3xl md:text-4xl text-white tracking-widest uppercase mb-2">
+      Data <span class="text-danger">Purged</span>
+    </h1>
+    
+    <p class="font-mono text-xs md:text-sm text-zinc-400 max-w-md text-center mb-8 px-6">
+      Zero Retention Policy Enforced. The 45-second viewing window has expired. All biometric data, analysis results, and raw images have been permanently wiped from the TrueImage servers.
+    </p>
+
+    <a href="/" class="group flex items-center gap-3 px-6 py-3 bg-danger/10 border border-danger/30 text-danger font-mono text-[10px] tracking-[0.2em] uppercase hover:bg-danger hover:text-white transition-all duration-300">
+      <span class="material-symbols-outlined text-[14px]">lock_reset</span>
+      New Scan
+    </a>
+    
+  </div>
+
   <script src="{{ url_for('static', filename='js/result.js') }}"></script>
 </body>
 </html>
