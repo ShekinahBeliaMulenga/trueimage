@@ -244,15 +244,3 @@ Copperbelt University
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
-
-## Repository
-
-GitHub: [ShekinahBeliaMulenga/trueimage](https://github.com/ShekinahBeliaMulenga/trueimage)
-
-```
-
-One important note: your current `requirements.txt` appears empty from the public repo, so before final submission you should populate it with your actual dependencies. :contentReference[oaicite:2]{index=2}
-::contentReference[oaicite:3]{index=3}
-```
-
-[1]: https://github.com/ShekinahBeliaMulenga/trueimage "GitHub - ShekinahBeliaMulenga/trueimage: Deep learning system capable of detecting AI-generated human face images · GitHub"
