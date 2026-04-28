@@ -5,41 +5,10 @@
   <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
   <title>TrueImage — Authenticity Analysis</title>
 
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <script id="tailwind-config">
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "primary-container": "#c084fc",
-            "on-primary":        "#31004a",
-            "background":        "#080810",
-            "outline-variant":   "#2e2b38",
-            "outline":           "#6b6578",
-            "surface":           "#0f0e18",
-            "surface-container-low":    "#13111d",
-            "surface-container-lowest": "#08080f",
-            "surface-container-high":   "#1e1b2a",
-            "surface-container":        "#161421",
-            "success": "#10b981",
-            "warning": "#f59e0b",
-            "danger":  "#ef4444",
-            "accent":  "#c084fc"
-          },
-          fontFamily: {
-            "headline": ["Syne", "sans-serif"],
-            "body":     ["DM Sans", "sans-serif"],
-            "mono":     ["JetBrains Mono", "monospace"]
-          }
-        }
-      }
-    }
-  </script>
-
 </head>
 
 <body class="text-[#ddd9e8] font-body min-h-screen flex flex-col relative z-10 selection:bg-primary-container selection:text-on-primary">
