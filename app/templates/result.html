@@ -4,10 +4,8 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
   <title>Analysis Results | TrueImage</title>
-
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
@@ -248,7 +246,13 @@
           <div class="logo-glyph" style="width:20px;height:20px;">
             <span class="material-symbols-outlined text-[10px] text-primary-container">fingerprint</span>
           </div>
-          <span class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">TrueImage &copy; 2026</span>
+          <span class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">
+            TrueImage &copy; <span id="copyright-year"></span>
+          </span>
+          <script>
+            document.getElementById('copyright-year').textContent = new Date().getFullYear();
+          </script>
+    
         </div>
         <div class="h-3 w-px bg-white/10 hidden sm:block"></div>
         <span class="font-mono text-[9px] text-zinc-700 sm:block">Shekinah B Mulenga</span>

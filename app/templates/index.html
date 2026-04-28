@@ -6,8 +6,7 @@
   <title>TrueImage — Authenticity Analysis</title>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
@@ -146,7 +145,7 @@
 
             <label class="flex items-center justify-center sm:justify-start cursor-pointer gap-2.5 group w-full sm:w-auto" aria-label="Toggle Auto Scan">
               <div class="relative">
-                <input type="checkbox" id="auto-scan-toggle" class="sr-only" checked>
+                <input type="checkbox" id="auto-scan-toggle" class="sr-only" checked autocomplete="off">
                 <div class="block bg-surface-container-lowest border border-zinc-700 w-10 h-6 transition-colors duration-300 toggle-bg"></div>
                 <div class="toggle-dot absolute left-1 top-1 bg-zinc-600 w-4 h-4 transition-all duration-300"></div>
               </div>
@@ -156,7 +155,7 @@
             </label>
 
             <button type="button" id="manual-submit-btn" 
-                    class="hidden w-full sm:w-auto border border-primary-container bg-primary-container/10 text-primary-container font-headline font-bold text-[10px] tracking-[0.18em] px-5 py-2.5 uppercase hover:bg-primary-container hover:text-black transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed">
+                    class="hidden cursor-pointer w-full sm:w-auto border border-primary-container bg-primary-container/10 text-primary-container font-headline font-bold text-[10px] tracking-[0.18em] px-5 py-2.5 uppercase hover:bg-primary-container hover:text-black transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed">
               Scan Image
             </button>
           </div>
@@ -183,7 +182,12 @@
           <div class="logo-glyph" style="width:20px;height:20px;">
             <span class="material-symbols-outlined text-[10px] text-primary-container">fingerprint</span>
           </div>
-          <span class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">TrueImage &copy; 2026</span>
+          <span class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">
+            TrueImage &copy; <span id="copyright-year"></span>
+          </span>
+          <script>
+            document.getElementById('copyright-year').textContent = new Date().getFullYear();
+          </script>
         </div>
         <div class="h-3 w-px bg-white/10 hidden sm:block"></div>
         <span class="font-mono text-[9px] text-zinc-700 hidden sm:block">Shekinah B Mulenga</span>

@@ -53,8 +53,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Update UI text and colors
     toggleLabel.textContent = isOn ? "Auto Scan: ON" : "Auto Scan: OFF";
     toggleLabel.className = isOn 
-      ? "text-xs uppercase tracking-[0.15em] text-primary-container transition-colors duration-300" 
-      : "text-xs uppercase tracking-[0.15em] text-zinc-500 transition-colors duration-300";
+    ? "font-mono text-[9px] uppercase tracking-[0.15em] text-primary-container transition-colors duration-300" 
+    : "font-mono text-[9px] uppercase tracking-[0.15em] text-zinc-500 transition-colors duration-300";
 
     // Update Processing Mode header
     if (processingModeText) {
