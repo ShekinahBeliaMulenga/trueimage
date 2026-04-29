@@ -192,6 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ----------------------------------------------------------------------
   function startAutoScan() {
     if (!fileInput.files || fileInput.files.length === 0) {
+      showCustomAlert("Please select an image before starting the scan.");
       return;
     }
 
@@ -224,9 +225,11 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } 
         else if (data.status === "success") {
-          // Success! Redirect the browser to the result report URL provided by Python
-          if (statusText) statusText.textContent = "Analysis complete. Generating report...";
-          window.location.href = data.redirect_url;
+          //FREEZE THE SCANNER
+          if (scanLine) scanLine.style.animationPlayState = 'paused';
+          
+          // Call the new visual function and pass the URL
+          triggerCompletionAndRedirect(data.redirect_url); 
         }
       })
       .catch(error => {
@@ -270,4 +273,44 @@ document.addEventListener("DOMContentLoaded", () => {
     
     manualSubmitBtn.disabled = true;
   }
+
+// ----------------------------------------------------------------------
+  // THE BLURRED MODAL LOGIC
+  // ----------------------------------------------------------------------
+  function triggerCompletionAndRedirect(resultUrl) {
+    const modal = document.getElementById('completion-modal');
+    const modalBox = document.getElementById('modal-box');
+    const redirectBar = document.getElementById('redirect-bar');
+
+    if (!modal || !modalBox || !redirectBar) {
+      // Fallback just in case the HTML wasn't added correctly
+      window.location.href = resultUrl;
+      return;
+    }
+
+    // 1. Unhide the modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    // 2. Small delay to allow CSS to register the display change, then trigger animations
+    setTimeout(() => {
+        // Fade in the blurred background
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+        
+        // "Pop" the box up to full size
+        modalBox.classList.remove('scale-95');
+        modalBox.classList.add('scale-100');
+        
+        // Animate the loading bar from 0% to 100% over 2 seconds
+        redirectBar.style.transition = 'width 2s cubic-bezier(0.4, 0, 0.2, 1)';
+        redirectBar.style.width = '100%';
+    }, 50);
+
+    // 3. Redirect to the results page after exactly 2.5 seconds
+    setTimeout(() => {
+        window.location.href = resultUrl; 
+    }, 2500);
+  }
+
 });

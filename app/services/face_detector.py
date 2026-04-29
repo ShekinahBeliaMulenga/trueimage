@@ -3,8 +3,11 @@ import cv2
 import logging
 import urllib.request
 import threading
-from dataclasses import dataclass, field
-from typing import List, Tuple, Optional
+from dataclasses import dataclass
+from typing import List
+
+from app.services.face_visualizer import FaceVisualizer
+from app.services.models import FaceBox, FaceDetectionResult
 
 # --- 1. CONFIGURATION & LOGGING ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,43 +15,28 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class DetectorConfig:
-    min_confidence: float = 0.65
+    min_confidence: float = 0.70
     max_image_size: int = 800
     side_view_ratio: float = 2.5
-    min_face_area_ratio: float = 0.005  # 0.5% Noise Filter
+    min_face_area_ratio: float = 0.004
     model_path: str = "face_detection_yunet_2023mar.onnx"
     model_url: str = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 
-@dataclass
-class FaceBox:
-    x: int
-    y: int
-    w: int
-    h: int
-    score: float
-
-@dataclass
-class FaceDetectionResult:
-    success: bool
-    face_count: int
-    error_message: str = ""
-
-# --- 2. THE VISUALIZER (Separated Responsibility) ---
-class FaceVisualizer:
-    @staticmethod
-    def draw_detections(image, faces: List[FaceBox]):
-        """Pure function to handle drawing."""
-        for face in faces:
-            cv2.rectangle(image, (face.x, face.y), (face.x + face.w, face.y + face.h), (0, 255, 0), 2)
-        return image
-
-# --- 3. THE CORE DETECTOR ---
+# --- 2. THE CORE DETECTOR ---
 class FaceDetector:
     _download_lock = threading.Lock()
 
     def __init__(self, config: DetectorConfig = DetectorConfig()):
         self.cfg = config
         self._ensure_model_exists()
+        
+        # Load the model into memory exactly ONCE when the server starts
+        self.detector = cv2.FaceDetectorYN.create(
+            model=self.cfg.model_path, 
+            config="", 
+            input_size=(320, 320), # Placeholder, updated dynamically per image
+            score_threshold=self.cfg.min_confidence
+        )
 
     def _ensure_model_exists(self):
         """Thread-safe download with logging."""
@@ -75,14 +63,14 @@ class FaceDetector:
         dist_l = abs(nose_x - le_x)
         
         ratio = max(dist_r, dist_l) / (min(dist_r, dist_l) + 1e-6)
-        eye_span_ratio = abs(re_x - le_x) / face_width
         
-        return ratio > self.cfg.side_view_ratio or eye_span_ratio < 0.25
+        #eye span ratio to 0.20 to allow slightly tilted faces
+        eye_span_ratio = abs(re_x - le_x) / face_width
+        return ratio > self.cfg.side_view_ratio or eye_span_ratio < 0.20
 
     def process_image(self, input_path: str, output_path: str) -> FaceDetectionResult:
         """ 
-        Orchestration method: 
-        Maintains your existing API while using the refactored components.
+        Orchestration method: Maintains existing API while using refactored components.
         """
         try:
             original_image = cv2.imread(input_path)
@@ -98,18 +86,18 @@ class FaceDetector:
 
             valid_faces: List[FaceBox] = []
             final_oriented_image = base_image
+            
+            # Local warning string for thread safety
+            final_warning_msg = "" 
 
             # Multi-angle processing
             for angle in [0, 90, 180, 270]:
                 rotated_img = self._rotate_image(base_image, angle)
                 curr_h, curr_w = rotated_img.shape[:2]
                 
-                detector = cv2.FaceDetectorYN.create(
-                    model=self.cfg.model_path, config="", input_size=(curr_w, curr_h),
-                    score_threshold=self.cfg.min_confidence
-                )
-                
-                _, detections = detector.detect(rotated_img)
+                # Dynamically update the input size for the pre-loaded model
+                self.detector.setInputSize((curr_w, curr_h))
+                _, detections = self.detector.detect(rotated_img)
                 
                 if detections is not None:
                     current_pass_faces = []
@@ -117,20 +105,56 @@ class FaceDetector:
                         fx, fy, fw, fh = list(map(int, det[:4]))
                         score = det[-1]
                         
-                        # Apply Filtering Logic
                         area_ratio = (fw * fh) / (curr_w * curr_h)
                         if score >= self.cfg.min_confidence and area_ratio >= self.cfg.min_face_area_ratio:
                             if not self._is_side_view(det, fw):
-                                # Boundary protection
                                 fx, fy = max(0, fx), max(0, fy)
                                 fw, fh = min(curr_w - fx, fw), min(curr_h - fy, fh)
                                 current_pass_faces.append(FaceBox(fx, fy, fw, fh, score))
 
                     if current_pass_faces:
+                        # --- THE HEURISTIC AMBIGUITY ENGINE (DUO SUPPORT) ---
+                        
+                        # 1. Sort all found faces by area (Largest first)
+                        current_pass_faces.sort(key=lambda f: f.w * f.h, reverse=True)
+                        
+                        # The largest face is always our baseline subject
+                        valid_subjects = [current_pass_faces[0]]
+                        main_area = current_pass_faces[0].w * current_pass_faces[0].h
+                        
+                        # 2. Check all other detected faces against the baseline area
+                        for face in current_pass_faces[1:]:
+                            face_area = face.w * face.h
+                            ratio = face_area / main_area
+                            
+                            # If a background face is at least 30% of the area of the main face, 
+                            # it is considered a "Primary Subject", not just background noise.
+                            if ratio >= 0.30: 
+                                valid_subjects.append(face)
+                        
+                        # 3. Enforce the Strict Security Thresholds
+                        if len(valid_subjects) > 2:
+                            # REJECT: It's a crowd photo or chaotic background
+                            return FaceDetectionResult(
+                                False, 
+                                0, 
+                                "Image rejected: TrueImage supports one or two dominant faces. Small background face-like detections are ignored. Images with more than two dominant faces are rejected to avoid ambiguous analysis."
+                            )
+                        
+                        # 4. Handle Messaging & Assignment
+                        if len(valid_subjects) == 2:
+                            final_warning_msg = "Dual subjects detected. TrueImage will analyze both."
+                        elif len(current_pass_faces) > len(valid_subjects):
+                            # It found tiny background faces and successfully ignored them
+                            final_warning_msg = "Background artifacts detected. TrueImage isolated the primary subject for analysis."
+                            
+                        # Override the pass list with ONLY our valid, dominant subjects
+                        current_pass_faces = valid_subjects
+                        
                         valid_faces = current_pass_faces
                         final_oriented_image = rotated_img
                         break
-
+                        
             if not valid_faces:
                 return FaceDetectionResult(False, 0, "Please upload a clear, front-facing human portrait.")
 
@@ -141,7 +165,7 @@ class FaceDetector:
                 logger.error(f"Failed to write image to {output_path}")
                 return FaceDetectionResult(False, 0, "Internal Server Error: Could not save result.")
 
-            return FaceDetectionResult(True, len(valid_faces))
+            return FaceDetectionResult(True, len(valid_faces), "", final_warning_msg)
 
         except Exception as e:
             logger.exception(f"Unexpected error during face detection: {e}")
