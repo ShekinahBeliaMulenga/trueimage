@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import List
 
 from app.services.face_visualizer import FaceVisualizer
-from app.services.models import FaceBox, FaceDetectionResult
+from app.services.face_detection_result import FaceBox, FaceDetectionResult
 
 # --- 1. CONFIGURATION & LOGGING ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
