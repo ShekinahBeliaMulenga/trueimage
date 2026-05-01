@@ -1,7 +1,7 @@
 import cv2
 from typing import List, Any
 from dataclasses import dataclass
-from app.services.models import FaceBox
+from app.services.face_detection_result import FaceBox
 
 class FaceVisualizer:
     @staticmethod

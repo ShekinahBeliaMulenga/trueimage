@@ -169,9 +169,10 @@
               <span class="num-counter" data-target="{{ ai_probability }}">0</span><span class="text-zinc-600 text-xl font-normal">%</span>
             </div>
             <div class="tick-bar w-full bg-black/60 border border-white/[0.04] overflow-hidden">
-              <div class="meter-bar h-full bg-primary-container w-0 transition-all duration-[1600ms] ease-out"
-                   data-width="{{ ai_probability }}%"
-                   style="box-shadow: 0 0 8px rgba(192,132,252,0.5);"></div>
+              <div class="meter-bar h-full bg-{{ theme_color }} w-0 transition-all duration-[1600ms] ease-out"
+                  data-width="{{ ai_probability }}%"
+                  style="box-shadow: 0 0 8px currentColor;">
+              </div>
             </div>
           </div>
 
