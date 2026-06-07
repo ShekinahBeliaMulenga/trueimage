@@ -222,8 +222,8 @@ training/dataset/raw/
 training/dataset/processed/
 training/downloads/
 
-# Optional: generated dataset preview images
-training/dataset_preview.jpg
-
-# Optional: local test outputs
-training/external_tests/
+# TRUEIMAGE model experiments and backups
+app/models/*backup*
+app/models/*.weights.h5
+app/models/*.h5
+app/models/*.onnx
