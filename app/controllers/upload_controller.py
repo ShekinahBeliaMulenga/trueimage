@@ -1,10 +1,8 @@
 from flask import Blueprint, request, current_app, send_from_directory, url_for, jsonify
-from werkzeug.utils import secure_filename
 import os
 import uuid
 import time
 import cv2
-import random
 from datetime import datetime
 
 upload_bp = Blueprint("upload", __name__)
@@ -40,6 +38,7 @@ def uploaded_file(filename):
 def predict():
     start_time = time.time()
     temp_manager = TempFileManager()
+    upload_path = None
     
     try:
         # ---------------------------------------------------------
@@ -98,20 +97,44 @@ def predict():
             return jsonify({"status": "error", "message": moderation_result.message}), 400
 
         # ---------------------------------------------------------
-        # 5. Face Detection & Annotation
+        # 5. Face Detection, Annotation & Clean Crop
         # ---------------------------------------------------------
         output_filename = f"processed_{unique_filename}"
         output_path = os.path.join(current_app.config["UPLOAD_FOLDER"], output_filename)
 
-        detection = current_app.face_detector.process_image(upload_path, output_path)
+        crop_filename = f"crop_{unique_filename}"
+        crop_path = os.path.join(current_app.config["UPLOAD_FOLDER"], crop_filename)
+
+        detection = current_app.face_detector.process_image(
+            input_path=upload_path,
+            output_path=output_path,
+            crop_output_path=crop_path
+        )
 
         if not detection.success:
             return jsonify({"status": "error", "message": detection.error_message}), 400
 
+        if detection.crop_path:
+            temp_manager.track(detection.crop_path)
+
         # ---------------------------------------------------------
-        # 6. Model inference (TODO: Replace with actual AI Model)
+        # 6. AI Model Inference
         # ---------------------------------------------------------
-        raw_probability = random.random()
+        if current_app.ai_inference_engine is None:
+            return jsonify({
+                "status": "error",
+                "message": "AI model is not available."
+            }), 503
+        
+        inference_result = current_app.ai_inference_engine.predict_probability(upload_path)
+
+        if not inference_result.success:
+            return jsonify({
+                "status": "error",
+                "message": inference_result.message
+            }), 500
+
+        raw_probability = inference_result.ai_probability
 
         # ---------------------------------------------------------
         # 7. Finalize Metrics & Respond

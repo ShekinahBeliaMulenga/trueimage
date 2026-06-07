@@ -212,3 +212,18 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# TRUEIMAGE generated files and datasets
+temp_uploads/
+media/
+
+# Training datasets - do not push image datasets
+training/dataset/raw/
+training/dataset/processed/
+training/downloads/
+
+# Optional: generated dataset preview images
+training/dataset_preview.jpg
+
+# Optional: local test outputs
+training/external_tests/
