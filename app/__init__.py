@@ -19,7 +19,7 @@ def create_app():
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     
     app.face_detector = FaceDetector()
-    app.explicit_detector = ExplicitDetector(threshold=0.50)
+    app.explicit_detector = ExplicitDetector(threshold=0.40)
 
     model_path = os.path.join(app.root_path, "models", "trueimage_model.keras")
 
