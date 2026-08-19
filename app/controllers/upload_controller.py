@@ -90,32 +90,110 @@ def predict():
         del test_img  # Free RAM immediately
 
         # ---------------------------------------------------------
-        # 4. Explicit-content screening (Fail-Fast)
+        # 4. Explicit-content screening (Fail-Fast, with bounded retry)
         # ---------------------------------------------------------
+        # SAFE: falls straight through, identical cost to before.
+        # EXPLICIT: rejected immediately, before face detection even runs.
+        #   Not eligible for crop-and-retry - a high-confidence EXPLICIT
+        #   verdict isn't the false-positive case this recovers, and letting
+        #   it retry would defeat the point of the check (Chapter 5,
+        #   Section 5.2.3, item c).
+        # SUGGESTIVE: the only branch that does extra work. Face detection
+        #   runs once here - it would have run anyway had the image been
+        #   SAFE - and one extra ExplicitDetector.predict() call checks the
+        #   crop. If the crop clears, detection runs a second time on the
+        #   crop alone, so every downstream artifact (annotated image,
+        #   inference input) is built from the crop, never the original.
         moderation_result = current_app.explicit_detector.predict(upload_path)
-        if moderation_result.verdict in ["EXPLICIT", "SUGGESTIVE"]:
+
+        # `detection` is populated either here (SUGGESTIVE-but-cleared) or
+        # in step 5 below (SAFE). Step 5 only runs its own detection if this
+        # is still None - that's what prevents a duplicate detection call.
+        detection = None
+        inference_input_path = upload_path  # overridden below if a crop is used
+
+        if moderation_result.verdict == "EXPLICIT":
             return jsonify({"status": "error", "message": moderation_result.message}), 400
+
+        elif moderation_result.verdict == "SUGGESTIVE":
+            probe_output_path = os.path.join(current_app.config["UPLOAD_FOLDER"], f"probe_{unique_filename}")
+            probe_crop_path = os.path.join(current_app.config["UPLOAD_FOLDER"], f"probecrop_{unique_filename}")
+
+            # process_image() now always displays via the crop internally
+            # (see face_detector.py), so this single pass on the original
+            # upload already produces a cropped, annotated result - a
+            # second detection pass on the crop is no longer needed here,
+            # unlike earlier versions of this branch.
+            probe_detection = current_app.face_detector.process_image(
+                input_path=upload_path,
+                output_path=probe_output_path,
+                crop_output_path=probe_crop_path,
+            )
+            # Tracked unconditionally so a rejection below cleans them up.
+            # On success these get renamed to their permanent filenames
+            # further down; cleanup() silently skips paths that no longer
+            # exist, so leaving these two entries tracked afterward is
+            # harmless.
+            temp_manager.track(probe_output_path)
+            temp_manager.track(probe_crop_path)
+
+            if not probe_detection.success or not probe_detection.crop_path:
+                # No usable face to crop to - fall back to the original
+                # rejection.
+                return jsonify({"status": "error", "message": moderation_result.message}), 400
+
+            recheck = current_app.explicit_detector.predict(probe_detection.crop_path)
+
+            if recheck.verdict != "SAFE":
+                # Confirmed, not a false positive - reject using the
+                # recheck's own message, since it reflects the crop itself.
+                return jsonify({"status": "error", "message": recheck.message}), 400
+
+            # Crop is clear. Promote the probe's own outputs to their
+            # permanent filenames rather than detecting a second time -
+            # process_image() already built them entirely from the crop.
+            output_filename = f"processed_{unique_filename}"
+            output_path = os.path.join(current_app.config["UPLOAD_FOLDER"], output_filename)
+            crop_filename = f"crop_{unique_filename}"
+            crop_path = os.path.join(current_app.config["UPLOAD_FOLDER"], crop_filename)
+
+            os.rename(probe_output_path, output_path)
+            os.rename(probe_crop_path, crop_path)
+
+            detection = probe_detection
+            detection.crop_path = crop_path
+            inference_input_path = crop_path
+            temp_manager.track(crop_path)  # temp - only needed for inference below
 
         # ---------------------------------------------------------
         # 5. Face Detection, Annotation & Clean Crop
+        #    (SAFE verdict only - the SUGGESTIVE-cleared branch above
+        #    already produced `detection`, so this is skipped for it)
         # ---------------------------------------------------------
-        output_filename = f"processed_{unique_filename}"
-        output_path = os.path.join(current_app.config["UPLOAD_FOLDER"], output_filename)
+        if detection is None:
+            output_filename = f"processed_{unique_filename}"
+            output_path = os.path.join(current_app.config["UPLOAD_FOLDER"], output_filename)
 
-        crop_filename = f"crop_{unique_filename}"
-        crop_path = os.path.join(current_app.config["UPLOAD_FOLDER"], crop_filename)
+            crop_filename = f"crop_{unique_filename}"
+            crop_path = os.path.join(current_app.config["UPLOAD_FOLDER"], crop_filename)
 
-        detection = current_app.face_detector.process_image(
-            input_path=upload_path,
-            output_path=output_path,
-            crop_output_path=crop_path
-        )
+            detection = current_app.face_detector.process_image(
+                input_path=upload_path,
+                output_path=output_path,
+                crop_output_path=crop_path
+            )
 
-        if not detection.success:
-            return jsonify({"status": "error", "message": detection.error_message}), 400
+            if not detection.success:
+                return jsonify({"status": "error", "message": detection.error_message}), 400
 
-        if detection.crop_path:
-            temp_manager.track(detection.crop_path)
+            if detection.crop_path:
+                temp_manager.track(detection.crop_path)
+
+            # Inference now runs on the padded face crop for every verdict,
+            # not just the SUGGESTIVE-cleared path - see face_detector.py's
+            # inference_crop_padding_ratio for the padding used. Falls back
+            # to the full upload only in the unlikely case no crop was saved.
+            inference_input_path = detection.crop_path or upload_path
 
         # ---------------------------------------------------------
         # 6. AI Model Inference
@@ -126,7 +204,11 @@ def predict():
                 "message": "AI model is not available."
             }), 503
         
-        inference_result = current_app.ai_inference_engine.predict_probability(upload_path)
+        # Reads from inference_input_path rather than upload_path directly -
+        # every verdict now runs inference on the padded face crop rather
+        # than the full upload, matching the framing set out in
+        # face_detector.py's inference_crop_padding_ratio.
+        inference_result = current_app.ai_inference_engine.predict_probability(inference_input_path)
 
         if not inference_result.success:
             return jsonify({
@@ -165,4 +247,4 @@ def predict():
         temp_manager.cleanup()
         
         # Note on `output_path`: We deliberately DO NOT track/delete the `processed_xxx.jpg` 
-        # here because the frontend UI still needs to load it to show the user the result page!
+        # here because the frontend UI still needs to load it to show the user the result page.

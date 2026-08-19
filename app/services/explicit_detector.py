@@ -42,7 +42,7 @@ class ExplicitDetector:
         "FEET_EXPOSED",
     }
 
-    def __init__(self, threshold: float = 0.50) -> None:
+    def __init__(self, threshold: float = 0.70) -> None:
         """
         :param threshold: minimum confidence required for a detector output
                           to be considered during moderation.
@@ -83,11 +83,11 @@ class ExplicitDetector:
         explicit_score = max(explicit_scores) if explicit_scores else 0.0
         suggestive_score = max(suggestive_scores) if suggestive_scores else 0.0
 
-        if explicit_score >= 0.70:
+        if explicit_score >= 0.80:
             verdict = "EXPLICIT"
             confidence_score = explicit_score
             message = "Upload rejected: Image violates safety and content guidelines. Standard portraits only"
-        elif explicit_score >= 0.40 or suggestive_score >= 0.60:
+        elif explicit_score >= 0.60 or suggestive_score >= 0.75:
             verdict = "SUGGESTIVE"
             confidence_score = max(explicit_score, suggestive_score)
             message = "Upload flagged: Image contains restricted content. Please provide a clear, standard portrait"

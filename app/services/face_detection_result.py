@@ -18,6 +18,13 @@ class FaceDetectionResult:
     warning_message: str = ""
     faces: List[FaceBox] = field(default_factory=list)
     crop_path: Optional[str] = None
+    # Origin (top-left) of the saved crop, in the ORIGINAL (pre-crop) image's
+    # pixel coordinates. Needed to translate `faces` (also in original-image
+    # coordinates) into crop-relative coordinates when annotating the crop
+    # directly, without re-running detection on it. Both default to 0, which
+    # is harmless when crop_path is None (there is nothing to translate).
+    crop_offset_x: int = 0
+    crop_offset_y: int = 0
 
     @property
     def bounding_box(self):

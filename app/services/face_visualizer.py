@@ -1,5 +1,5 @@
 import cv2
-from typing import List, Any
+from typing import List
 from dataclasses import dataclass
 from app.services.face_detection_result import FaceBox
 
@@ -8,14 +8,13 @@ class FaceVisualizer:
     def draw_detections(image, faces: List[FaceBox]):
         """Draws a clean, minimalist targeting bracket around faces."""
         
-        # Crisp, stark white
         WHITE = (255, 255, 255)
         
         for face in faces:
             x, y, w, h = face.x, face.y, face.w, face.h
             
             # --- 1. MINIMALIST CORNER BRACKETS ---
-            # Instead of a full box, just draw the corners (15% of the width)
+            # Instead of a full box, draw the corners (15% of the width)
             cl = max(int(w * 0.15), 10) 
             thick = 2
             

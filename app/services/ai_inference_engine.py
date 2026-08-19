@@ -1,10 +1,15 @@
 import os
+import time
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 import tensorflow as tf
 from PIL import Image, ImageOps
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -52,7 +57,15 @@ class AIInferenceEngine:
         try:
             image_batch = self._preprocess_image(image_path)
 
+            inference_start = time.perf_counter()
+
             prediction = self.model.predict(image_batch, verbose=0)
+
+            inference_time = time.perf_counter() - inference_start
+            
+            logger.info(
+                f"EfficientNetV2-S inference time: {inference_time:.4f} seconds"
+            )
 
             ai_probability = float(prediction[0][0])
             ai_probability = max(0.0, min(1.0, ai_probability))

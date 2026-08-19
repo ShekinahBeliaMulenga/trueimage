@@ -3,6 +3,7 @@ import cv2
 import logging
 import urllib.request
 import threading
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Tuple
@@ -49,6 +50,17 @@ class DetectorConfig:
     min_nose_position_ratio: float = 0.25
     max_nose_position_ratio: float = 0.85
 
+    # Padding for the face crop fed to the AI inference model, as a fraction
+    # of the larger of the face box's width/height. Widened from the
+    # original 0.20 display-crop default so the crop keeps a bit more
+    # forehead, chin, ear, and hair/neck context rather than just the face
+    # oval - the classifier shouldn't see a tighter framing at inference
+    # than whatever framing its training data actually used. _save_face_crop
+    # already clamps to image bounds, so this is safe near the frame edge.
+    # Re-run evaluate.py and threshold_analysis.py after changing this -
+    # it shifts the model's effective input distribution.
+    inference_crop_padding_ratio: float = 0.5
+
 
 # `detect_fn` is injected into every strategy so detection logic lives in
 # exactly one place (FaceDetector._detect_valid_faces), not duplicated per
@@ -68,13 +80,27 @@ class ExifOrientationResolver(OrientationStrategy):
     """
     First, cheapest link in the chain. cv2.imread() already applies EXIF
     orientation at load time, so `image` here has already been corrected
-    if an EXIF tag existed. This strategy just checks: is a valid, upright
-    face already detectable with no rotation search needed? If so, most
-    camera-native uploads resolve here and skip the search entirely.
+    if an EXIF tag existed. This strategy checks whether a confidently
+    upright face is already detectable, so most camera-native uploads can
+    resolve here and skip the rotation search entirely.
+
+    Deliberately requires the SAME acceptance bar FallbackRotationSearch
+    uses (min_confidence + rotation_search_confidence_margin), not just the
+    bare min_confidence. _has_plausible_face_geometry's bounds are loose
+    enough that a genuinely upside-down or sideways face can occasionally
+    still slip past it at marginal confidence - and if this strategy
+    accepted that on the spot, FallbackRotationSearch would never even run
+    to find the actually-correct, much-more-confident orientation. Holding
+    both strategies to the same bar means a low-confidence match here
+    always gets a fair comparison against the alternatives instead of being
+    locked in prematurely.
     """
+    def __init__(self, min_accept_confidence: float):
+        self._min_accept_confidence = min_accept_confidence
+
     def resolve(self, image, detect_fn: DetectFn):
         faces = detect_fn(image)
-        if faces:
+        if faces and max(f.score for f in faces) >= self._min_accept_confidence:
             return image, faces
         return None
 
@@ -158,8 +184,20 @@ class FaceDetector:
             score_threshold=self.cfg.min_confidence
         )
 
+        # Only FallbackRotationSearch is used, deliberately. An earlier
+        # version also tried ExifOrientationResolver first, short-circuiting
+        # if its confidence cleared a threshold - but that meant a wrong
+        # orientation only had to score above one fixed number to win,
+        # never having to actually beat the correct orientation directly.
+        # Raising that threshold narrowed the failure window but couldn't
+        # close it: some upside-down faces score confidently even in the
+        # wrong orientation. Always running the full 4-angle comparison
+        # removes the failure mode entirely, since the correct orientation
+        # only needs to score higher than the alternatives, not clear some
+        # threshold in isolation. ExifOrientationResolver's class definition
+        # is left in place below in case a future, genuinely reliable fast
+        # path is worth adding, but it is not part of the active pipeline.
         self.orientation_resolver = OrientationResolver([
-            ExifOrientationResolver(),
             FallbackRotationSearch(
                 rotate_fn=self._rotate_image,
                 base_confidence=self.cfg.min_confidence,
@@ -260,6 +298,13 @@ class FaceDetector:
         return faces
 
     def _save_face_crop(self, image, faces: List[FaceBox], crop_output_path: str, padding_ratio: float = 0.20):
+        """
+        Returns (crop_output_path, x1, y1) on success, where (x1, y1) is the
+        crop's top-left origin in the ORIGINAL image's coordinate space -
+        callers need this to translate face boxes (also in original-image
+        coordinates) onto the crop without re-running detection on it.
+        Returns None on failure, same as before.
+        """
         if not crop_output_path or not faces: return None
 
         img_h, img_w = image.shape[:2]
@@ -286,7 +331,7 @@ class FaceDetector:
             logger.error(f"Failed to write face crop to {crop_output_path}")
             return None
 
-        return crop_output_path
+        return crop_output_path, x1, y1
 
     def process_image(self, input_path: str, output_path: str, crop_output_path: str = None) -> FaceDetectionResult:
         try:
@@ -304,8 +349,17 @@ class FaceDetector:
             # Orientation resolution + detection happen together: whichever
             # strategy succeeds returns the faces it already found, so there's
             # no separate re-detection step afterward.
+
+            detection_start = time.perf_counter()
+
             final_oriented_image, current_pass_faces = self.orientation_resolver.resolve(
                 base_image, detect_fn=self._detect_valid_faces
+            )
+
+            detection_time = time.perf_counter() - detection_start
+
+            logger.info(
+                f"Total face detection time: {detection_time:.4f} seconds"
             )
 
             valid_faces: List[FaceBox] = []
@@ -339,15 +393,44 @@ class FaceDetector:
                 return FaceDetectionResult(False, 0, "Please upload a clear, front-facing human portrait.")
 
             saved_crop_path = None
+            crop_offset_x = 0
+            crop_offset_y = 0
             if crop_output_path:
-                saved_crop_path = self._save_face_crop(
+                crop_result = self._save_face_crop(
                     image=final_oriented_image,
                     faces=valid_faces,
                     crop_output_path=crop_output_path,
-                    padding_ratio=0.20
+                    padding_ratio=self.cfg.inference_crop_padding_ratio
                 )
+                if crop_result:
+                    saved_crop_path, crop_offset_x, crop_offset_y = crop_result
 
-            final_image = FaceVisualizer.draw_detections(final_oriented_image, valid_faces)
+            if saved_crop_path:
+                # Display image is the crop itself, annotated - not the full
+                # original with a small box in the corner. Face coordinates
+                # are already known from detection above, so they are just
+                # translated into the crop's coordinate space and drawn
+                # directly on the (small) crop; this does not re-run
+                # detection, and drawing on a small crop is also cheaper
+                # than drawing on and re-encoding the full-resolution image.
+                crop_image_for_display = cv2.imread(saved_crop_path)
+                if crop_image_for_display is None:
+                    logger.error(f"Failed to re-read saved crop at {saved_crop_path} for annotation")
+                    final_image = FaceVisualizer.draw_detections(final_oriented_image, valid_faces)
+                else:
+                    translated_faces = [
+                        FaceBox(
+                            x=f.x - crop_offset_x, y=f.y - crop_offset_y,
+                            w=f.w, h=f.h, score=f.score,
+                        )
+                        for f in valid_faces
+                    ]
+                    final_image = FaceVisualizer.draw_detections(crop_image_for_display, translated_faces)
+            else:
+                # No crop was produced (crop_output_path not requested, or
+                # _save_face_crop failed) - fall back to annotating the full
+                # image so the request can still succeed.
+                final_image = FaceVisualizer.draw_detections(final_oriented_image, valid_faces)
 
             if not cv2.imwrite(output_path, final_image):
                 logger.error(f"Failed to write image to {output_path}")
@@ -359,7 +442,9 @@ class FaceDetector:
                 error_message="",
                 warning_message=final_warning_msg,
                 faces=valid_faces,
-                crop_path=saved_crop_path
+                crop_path=saved_crop_path,
+                crop_offset_x=crop_offset_x,
+                crop_offset_y=crop_offset_y,
             )
         except Exception as e:
             logger.exception(f"Unexpected error during face detection: {e}")
