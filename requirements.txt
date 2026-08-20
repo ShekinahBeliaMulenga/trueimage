@@ -5,3 +5,4 @@ nudenet==3.4.2
 numpy==2.4.4
 opencv-contrib-python==4.13.0.92
 Pillow==12.2.0
+tensorflow>=2.16
