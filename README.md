@@ -1,9 +1,8 @@
-
 <div align="center">
 
 # TrueImage
 
-### Strategic Deep Learning Framework for the Surgical Detection of AI-Generated Facial Synthesis
+### A Deep Learning System for Detecting AI-Generated Face Images
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-Web%20Framework-black.svg)
@@ -18,9 +17,9 @@
 
 ## 📖 Overview
 
-In an era where **Generative Adversarial Networks (GANs)** and latent diffusion models can synthesize hyper-realistic human faces with a single prompt, the boundary between biological reality and digital fabrication is dissolving. **TrueImage** is a forensic deep learning pipeline engineered to restore that boundary.
+AI models can now generate images of human faces that look convincingly real, making it hard to tell a photograph from a synthetic image. **TrueImage** is a deep learning system built to make that distinction.
 
-Developed at the **Copperbelt University (CBU)**, this project moves beyond simple classification. It utilizes a multi-stage verification architecture, incorporating high-speed facial localization, geometric symmetry analysis, and automated content screening, to provide a robust, **CPU-optimized solution** for real-time deepfake diagnostics.
+Developed at the **Copperbelt University (CBU)**, the system combines face detection, geometric checks, and content screening around a trained classifier, and is designed to run on ordinary CPU hardware without needing a GPU.
 
 ---
 
@@ -28,46 +27,46 @@ Developed at the **Copperbelt University (CBU)**, this project moves beyond simp
 
 | Layer | Technology | Purpose |
 |:---|:---|:---|
-| **Backend** | Python / Flask | Core logic and RESTful routing |
-| **Face Detection** | YuNet (ONNX, via OpenCV) | Ultra-fast CNN for CPU-based facial localization |
-| **Deep Learning** | TensorFlow / Keras, EfficientNetV2-S | Custom-trained classifier for synthesis artifact detection |
+| **Backend** | Python / Flask | Core logic and routing |
+| **Face Detection** | YuNet (ONNX, via OpenCV) | Fast, CPU-based face localization |
+| **Deep Learning** | TensorFlow / Keras, EfficientNetV2-S | Trained classifier for detecting synthetic images |
 | **Content Moderation** | NudeNet | Screens uploads before they reach the classifier |
 | **Image Processing** | OpenCV, Pillow | Orientation handling, cropping, and geometric transforms |
-| **Orchestration** | APScheduler | Automated forensic data purging |
+| **Orchestration** | APScheduler | Automatic deletion of processed files |
 
-Note: only face *detection* runs on the ONNX runtime (YuNet). The classifier that actually decides real vs. AI-generated runs on TensorFlow/Keras, loading a trained `.keras` model file.
+Note: only face *detection* runs on the ONNX runtime (YuNet). The classifier that decides real vs. AI-generated runs on TensorFlow/Keras, loading a trained `.keras` model file.
 
 ---
 
 ## ✨ Key Features
 
-### 🧠 Synthesis Signature Analysis
-TrueImage utilizes a custom-trained **EfficientNetV2-S** model to detect "synthesis signatures": micro-level pixel inconsistencies, checkerboard artifacts, and unnatural texture smoothing that characterize AI-generated imagery. Classification runs on a padded crop of the detected face rather than the full uploaded image, keeping the model's fixed input focused on the region where these artifacts actually concentrate.
+### 🧠 Detecting Synthetic Faces
+TrueImage uses a custom-trained **EfficientNetV2-S** model to detect the small inconsistencies that AI-generated images tend to have: unnatural pixel patterns, checkerboard artifacts, and unusually smooth textures. Classification runs on a padded crop of just the detected face rather than the full uploaded image, so the model focuses on the part of the image where these patterns actually appear.
 
-### 📐 Geometric Validation & Side-View Rejection
-Before classification, the system performs a **Symmetry Check**. By calculating the ratio between 5-point facial landmarks, it automatically rejects side-profile shots and pareidolia-driven false positives (face-like patterns in non-face objects) to prevent unreliable results.
+### 📐 Face Geometry Check
+Before classification, the system checks whether a detected face is geometrically plausible, comparing the position of the eyes, nose, and mouth. This rejects side-on photos and false detections where a non-face object (such as a wall socket) is mistaken for a face.
 
-### 🔄 Robust Orientation Handling
-Uploads are not assumed to be upright. The system tests all four right-angle rotations and keeps whichever produces the highest-confidence, most geometrically plausible detection, rather than trusting the as-uploaded orientation outright.
+### 🔄 Orientation Handling
+The system does not assume an uploaded image is right-side up. It tests all four rotations and keeps whichever produces the most confident, most geometrically plausible face detection.
 
-### 🛡️ Content Moderation with Recovery
-Every upload is screened by a NudeNet-based check before analysis. Clearly inappropriate uploads are rejected outright. Borderline (SUGGESTIVE) uploads are given one automatic second chance: the system crops to the detected face and re-screens the crop alone, so a false positive triggered by something elsewhere in frame doesn't need to block an otherwise legitimate portrait.
+### 🛡️ Content Moderation with a Second Chance
+Every upload is checked for inappropriate content before analysis. Clearly inappropriate images are rejected outright. Borderline images get one more chance: the system crops to the detected face and re-checks the crop alone, so an otherwise normal portrait is not rejected because of something unrelated elsewhere in the frame.
 
-### ⚡ Millisecond-Level CPU Inference
-By leveraging the **YuNet ONNX** runtime and OpenCV's C++ backend for face detection, the system keeps localization overhead low even without GPU hardware.
+### ⚡ Fast, CPU-Only Face Detection
+Face detection runs on the YuNet model through OpenCV, which is fast enough on ordinary CPU hardware that no GPU is needed for this step.
 
-### 🔒 Automated Forensic Scrubbing (45s Window)
-To ensure absolute user privacy, TrueImage implements a **Zero-Retention Policy** with two layers: uploaded files are deleted at the end of each request regardless of outcome, and a background scheduler independently sweeps and deletes any remaining result image older than 45 seconds, so the guarantee holds even if a request is interrupted.
+### 🔒 Automatic Deletion (45 Second Window)
+Uploaded images are not stored permanently. Each file is deleted at the end of its own request, and a background job independently checks every 15 seconds and deletes anything left over that is older than 45 seconds. This means files are still removed even if a request is interrupted partway through.
 
 ---
 
 ## 🧪 The Analysis Pipeline
 
-1. **Secure Ingestion**: User uploads an image via the dashboard; format and size are validated before anything else runs.
-2. **Content Screening**: The image is checked for inappropriate content. Clear violations are rejected; borderline cases get a second, face-only check before being rejected.
-3. **Face Localization**: YuNet scans for a human face, testing all four rotations to find the correct orientation, and verifies the result is geometrically face-shaped.
-4. **Diagnostic Inference**: A padded crop of the detected face is passed through the EfficientNetV2-S classifier to calculate an authenticity confidence score.
-5. **Lockdown & Purge**: Results are displayed with a live countdown; the server scrubs all data within 45 seconds.
+1. **Upload**: The user uploads an image. File format and size are checked first.
+2. **Content Check**: The image is screened for inappropriate content. Clear violations are rejected. Borderline images get a second check on just the detected face before being rejected.
+3. **Face Detection**: YuNet looks for a human face, testing all four rotations, and checks that the result is geometrically a real face rather than a false match.
+4. **Classification**: A padded crop of the detected face is passed to the EfficientNetV2-S classifier, which produces a confidence score.
+5. **Result and Deletion**: The result is shown to the user, and all related files are deleted within 45 seconds.
 
 ---
 
@@ -93,7 +92,7 @@ trueimage/
 │   ├── config.py
 │   └── __init__.py         # Flask application factory
 ├── training/               # Dataset preparation, training, and evaluation scripts
-├── scheduler.py             # Zero-retention background purge job
+├── scheduler.py             # Background job that deletes old files
 ├── run.py                   # Application entry point
 ├── requirements.txt         # Production dependencies
 └── README.md                 # Project documentation
@@ -111,29 +110,29 @@ python -m venv venv
 # Windows: venv\Scripts\activate | Unix: source venv/bin/activate
 ```
 
-### 2. Deploy Dependencies
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
-This includes TensorFlow, which is required to load the classifier. On a fresh environment, confirm it installs correctly for your platform before proceeding (GPU vs CPU builds can differ).
+This includes TensorFlow, which is required to load the classifier. On a fresh environment, confirm it installs correctly for your platform before proceeding, since GPU and CPU builds can differ.
 
-### 3. Launch Suite
+### 3. Run the Application
 ```bash
 python run.py
 ```
-*Access the dashboard at `http://localhost:5000`*
+*Open `http://localhost:5000` in a browser.*
 
 ---
 
 ## 🔬 Methodology & Constraints
 
 ### Why EfficientNetV2-S?
-We selected EfficientNetV2-S for its **Fused-MBConv blocks**, which provide a superior balance between depth and width for CPU-bound environments. This allows TrueImage to perform deep forensic analysis without requiring high-end GPUs.
+EfficientNetV2-S was chosen for its Fused-MBConv blocks, which give a good balance of accuracy and speed on CPU hardware. This lets TrueImage run without needing a GPU.
 
 ### Scope & Limitations
-* **Portrait Focus**: Optimized strictly for high-resolution human face images.
-* **Environmental Sensitivity**: Extremely low lighting or heavy motion blur may impact detection accuracy.
-* **Static Analysis**: Currently limited to still images; does not process video synthesis.
+* **Portrait Focus**: Built for clear, high-resolution human face images.
+* **Environmental Sensitivity**: Very low lighting or heavy motion blur can reduce detection accuracy.
+* **Still Images Only**: The system analyses still images and does not process video.
 * **Generator Coverage**: Detection accuracy reflects the generators represented in the training data and may be lower for image generators released after training.
 
 ---
@@ -152,6 +151,6 @@ This project is licensed under the MIT License.
 
 <div align="center">
 
-*"Bringing Truth to Digital Imagery"*
+*Bringing Truth to Digital Imagery*
 
 </div>
