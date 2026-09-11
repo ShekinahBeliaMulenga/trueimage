@@ -22,17 +22,22 @@ def scrub_expired_images(app):
         deleted_count = 0
         
         for filename in os.listdir(upload_dir):
-            if filename.startswith("processed_"):
-                filepath = os.path.join(upload_dir, filename)
+            filepath = os.path.join(upload_dir, filename)
+            
+            if filename == ".gitkeep":
+                continue
+
+            if not os.path.isfile(filepath):
+                continue
+            
+            try:
+                file_age = current_time - os.path.getmtime(filepath)
                 
-                try:
-                    file_age = current_time - os.path.getmtime(filepath)
-                    
-                    if file_age > max_age_seconds:
-                        os.remove(filepath)
-                        deleted_count += 1
-                except OSError as e:
-                    pass # Silently ignore locked files, try again in 15 seconds
+                if file_age > max_age_seconds:
+                    os.remove(filepath)
+                    deleted_count += 1
+            except OSError as e:
+                pass # Silently ignore locked files, try again in 15 seconds
         
         if deleted_count > 0:
             logger.info(f"Aggressive Sweep: Purged {deleted_count} forensic artifacts older than {max_age_seconds}s.")
