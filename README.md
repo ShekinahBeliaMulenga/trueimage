@@ -120,7 +120,7 @@ This includes TensorFlow, which is required to load the classifier. On a fresh e
 ```bash
 python run.py
 ```
-*Open `http://localhost:5000` in a browser.*
+*Open `http://localhost:3000` in a browser.*
 
 ---
 
