@@ -67,7 +67,7 @@ def build_model():
         name="data_augmentation"
     )
 
-    base_model = tf.keras.applications.EfficientNetV2S(
+    base_model = tf.keras.applications.EfficientNetV2B0(
         include_top=False,
         weights="imagenet",
         input_shape=(224, 224, 3),
