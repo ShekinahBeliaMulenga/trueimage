@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
         clearTimeout(autoSubmitTimeout);
         autoSubmitTimeout = null;
       }
+
       if (currentObjectURL) {
         statusText.textContent = "Preview loaded. Click Scan to begin.";
       }
@@ -191,10 +192,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // THE NEW AJAX / FETCH PIPELINE
   // ----------------------------------------------------------------------
   function startAutoScan() {
+
     if (!fileInput.files || fileInput.files.length === 0) {
       showCustomAlert("Please select an image before starting the scan.");
       return;
     }
+
+    autoScanToggle.disabled = true;
 
     // UI Updates: Show scanning state
     if (statusText) statusText.textContent = "Analyzing image...";
@@ -218,6 +222,8 @@ document.addEventListener("DOMContentLoaded", () => {
           if (statusText) statusText.textContent = "Analysis failed.";
           
           showCustomAlert(data.message);
+
+          autoScanToggle.disabled = false;
           
           // Re-enable manual scan if applicable so they can try a new image
           if (!autoScanToggle.checked) {
@@ -238,6 +244,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (scanLine) scanLine.classList.add("hidden");
         if (statusText) statusText.textContent = "Connection error.";
         showCustomAlert("System Error: Could not connect to the forensic analysis server.");
+
+        autoScanToggle.disabled = false;
+
         if (!autoScanToggle.checked) manualSubmitBtn.disabled = false;
       });
     }, 700); // 700ms UI delay
