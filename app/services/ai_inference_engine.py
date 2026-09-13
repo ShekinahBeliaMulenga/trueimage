@@ -38,7 +38,7 @@ class AIInferenceEngine:
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"AI model file not found: {self.model_path}")
 
-        return tf.keras.models.load_model(self.model_path)
+        return tf.keras.models.load_model(self.model_path, compile=False)
 
     def _preprocess_image(self, image_path: str) -> np.ndarray:
         with Image.open(image_path) as image:

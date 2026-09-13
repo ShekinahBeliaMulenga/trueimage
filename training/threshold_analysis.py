@@ -15,7 +15,7 @@ from sklearn.metrics import (
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 TEST_DIR = PROJECT_ROOT / "training" / "dataset" / "processed" / "test"
-MODEL_PATH = PROJECT_ROOT / "app" / "models" / "trueimage_model.keras"
+MODEL_PATH = PROJECT_ROOT / "app" / "models" / "trueimage_model_effv2s.keras"
 
 IMAGE_SIZE = (224, 224)
 BATCH_SIZE = 16
@@ -39,7 +39,7 @@ def main():
     print("\nTRUEIMAGE Threshold Analysis")
     print("----------------------------")
 
-    model = tf.keras.models.load_model(MODEL_PATH)
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
     test_dataset = load_test_dataset()
 
     y_true = []

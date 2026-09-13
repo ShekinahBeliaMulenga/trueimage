@@ -16,16 +16,12 @@ class ResultInterpreter:
 
         if ai_probability <= 40:
             label = "REAL"
-            user_message = (
-                "Neural scan complete. The image appears to be a real photograph."
-            )
+            user_message = "Neural scan complete. The image appears to be a real photograph."
             confidence_score = round((1 - probability) * 100, 1)
 
-        elif ai_probability < 65:
+        elif ai_probability < 70:
             label = "UNCERTAIN"
-            user_message = (
-                "The analysis is inconclusive. Manual review is recommended."
-            )
+            user_message = "The analysis is inconclusive. Manual review is recommended."
             confidence_score = max(
                 round(ai_probability, 1),
                 round((1 - probability) * 100, 1)
@@ -33,9 +29,7 @@ class ResultInterpreter:
 
         else:
             label = "AI-GENERATED"
-            user_message = (
-                "Neural scan complete. Synthetic characteristics were detected in the image."
-            )
+            user_message = "Neural scan complete. Synthetic characteristics were detected in the image."
             confidence_score = ai_probability
 
         return Interpretation(
