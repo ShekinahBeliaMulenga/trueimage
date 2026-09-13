@@ -21,7 +21,7 @@ def create_app():
     app.face_detector = FaceDetector()
     app.explicit_detector = ExplicitDetector(threshold=0.60)
 
-    model_path = os.path.join(app.root_path, "models", "trueimage_model.keras")
+    model_path = os.path.join(app.root_path, "models", "trueimage_model_effv2s.keras")
 
     try:
         app.ai_inference_engine = AIInferenceEngine(model_path=model_path)
