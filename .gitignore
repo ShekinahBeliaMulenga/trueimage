@@ -226,4 +226,4 @@ training/downloads/
 app/models/*backup*
 app/models/*.weights.h5
 app/models/*.h5
-app/models/*.onnx
+app/models/*.onnxapp/models/trueimage_model_convnexttiny.keras

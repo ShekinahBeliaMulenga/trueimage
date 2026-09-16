@@ -19,7 +19,7 @@ class ResultInterpreter:
             user_message = "Neural scan complete. The image appears to be a real photograph."
             confidence_score = round((1 - probability) * 100, 1)
 
-        elif ai_probability < 70:
+        elif ai_probability < 55:
             label = "UNCERTAIN"
             user_message = "The analysis is inconclusive. Manual review is recommended."
             confidence_score = max(

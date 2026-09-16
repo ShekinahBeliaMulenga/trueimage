@@ -3,6 +3,9 @@ import numpy as np
 import tensorflow as tf
 from sklearn.metrics import precision_recall_curve, confusion_matrix, classification_report
 
+# Enable Mixed Precision for faster training on modern GPUs (RTX / Tensor Cores)
+# This reduces memory usage and speeds up math operations.
+tf.keras.mixed_precision.set_global_policy('mixed_float16')
 
 # =====================================================
 # TRUEIMAGE MODEL TRAINING SCRIPT - FALSE-POSITIVE FOCUSED VERSION
@@ -29,24 +32,9 @@ PHASE_1_EPOCHS = 10
 PHASE_2_EPOCHS = 10
 
 # --- False-positive controls -------------------------------------------
-# Multiply the "real" class weight beyond plain class balancing to make
-# the model extra cautious about calling something ai_generated.
-# 1.0 = pure balancing based on folder counts. Try 1.3-1.8 if FPs persist.
 REAL_CLASS_WEIGHT_BOOST = 1.3
-
-# Beta < 1 weights precision higher than recall in the metric used for
-# checkpointing / early stopping. 0.5 is a reasonable "precision matters
-# roughly 2x more than recall" setting.
 FBETA_BETA = 0.5
-
-# After training, search for the smallest threshold that hits this
-# precision on the validation set (precision here = of everything the
-# model calls ai_generated, what fraction actually is). Raise this if
-# you're still seeing too many false positives after retraining.
 TARGET_PRECISION = 0.97
-
-# Toggle on if you suspect your real/ai_generated images differ in
-# compression signature (see note in load_datasets docstring below).
 ADD_COMPRESSION_AUGMENTATION = False
 
 
@@ -82,16 +70,6 @@ class FBetaScore(tf.keras.metrics.Metric):
 
 
 def load_datasets():
-    """
-    NOTE ON FALSE POSITIVES: before touching any code, spot-check whether
-    your `real` and `ai_generated` folders differ in anything OTHER than
-    the thing you want the model to learn - e.g. average resolution,
-    JPEG quality, presence of EXIF data, aspect ratio, or watermarks.
-    If the "real" folder is a narrow, uniform source (e.g. one stock
-    dataset) it will not generalize to the diverse real photos you see
-    at inference time, and that alone can produce a high FP rate no
-    matter how the model is trained.
-    """
     train_dataset = tf.keras.utils.image_dataset_from_directory(
         TRAIN_DIR,
         labels="inferred",
@@ -116,33 +94,34 @@ def load_datasets():
     return train_dataset, validation_dataset
 
 
-def _compression_jitter(images, labels):
-    """Randomly re-compress each image in the batch as JPEG (quality 35-100).
-
-    Helps the model stop treating compression artifacts as a tell for
-    'ai_generated' when the real-world real photos it sees have been through
-    multiple rounds of social-media recompression. Only apply to training data.
-    """
-    def _apply(img):
-        img_uint8 = tf.cast(tf.clip_by_value(img, 0, 255), tf.uint8)
-        img_uint8 = tf.image.random_jpeg_quality(img_uint8, 35, 100)
-        return tf.cast(img_uint8, tf.float32)
-
-    images = tf.map_fn(_apply, images, fn_output_signature=tf.float32)
-    return images, labels
-
-
 def optimize_dataset(dataset, augment_compression=False):
+    """
+    Optimizes the dataset pipeline. Caches clean images in memory, applies CPU-bound
+    augmentations via C++ backend mapping (unbatched), and prefetches for the GPU.
+    """
+    # 1. Cache the deterministic data first so we don't re-read from disk
     dataset = dataset.cache()
+    
+    # 2. Apply random CPU augmentations (like compression jitter)
     if augment_compression:
-        dataset = dataset.map(_compression_jitter, num_parallel_calls=tf.data.AUTOTUNE)
+        # Unbatch to avoid the tf.map_fn bottleneck across batched tensors
+        dataset = dataset.unbatch()
+        
+        def _apply_jpeg(img, label):
+            img_uint8 = tf.cast(tf.clip_by_value(img, 0, 255), tf.uint8)
+            img_uint8 = tf.image.random_jpeg_quality(img_uint8, 35, 100)
+            return tf.cast(img_uint8, tf.float32), label
+            
+        dataset = dataset.map(_apply_jpeg, num_parallel_calls=tf.data.AUTOTUNE)
+        
+        # Re-batch after processing individual images
+        dataset = dataset.batch(BATCH_SIZE)
+        
+    # 3. Prefetch to ensure the GPU never waits for data
     return dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
 
 
 def compute_class_weights():
-    """Balance classes by folder count, then optionally boost the 'real'
-    weight further so misclassifying a real image as ai_generated is
-    penalized harder than the reverse mistake."""
     n_real = sum(1 for _ in (TRAIN_DIR / "real").iterdir())
     n_ai = sum(1 for _ in (TRAIN_DIR / "ai_generated").iterdir())
     total = n_real + n_ai
@@ -195,10 +174,13 @@ def build_model():
 
     x = tf.keras.layers.Dropout(0.30, name="dropout_2")(x)
 
+    # Note: When using mixed_float16, the final output layer MUST be cast back to float32
+    # to prevent numerical instability during loss calculation.
     outputs = tf.keras.layers.Dense(
         1,
         activation="sigmoid",
-        name="ai_probability"
+        name="ai_probability",
+        dtype="float32" 
     )(x)
 
     model = tf.keras.Model(inputs, outputs, name="trueimage_detector")
@@ -221,9 +203,6 @@ def compile_model(model, learning_rate):
 
 
 def evaluate_and_tune_threshold(model, validation_dataset, target_precision=TARGET_PRECISION):
-    """Scan validation predictions to find a threshold hitting target_precision
-    on the ai_generated class, then print a confusion matrix and full report
-    at that threshold so you can see the false-positive rate directly."""
     y_true, y_pred_probs = [], []
 
     for images, labels in validation_dataset:
@@ -234,7 +213,6 @@ def evaluate_and_tune_threshold(model, validation_dataset, target_precision=TARG
     y_true = np.array(y_true)
     y_pred_probs = np.array(y_pred_probs)
 
-    # Confusion matrix / report at the default 0.5 threshold, for comparison
     default_preds = (y_pred_probs >= 0.5).astype(int)
     print("\n--- At default 0.5 threshold ---")
     print(confusion_matrix(y_true, default_preds))
@@ -249,9 +227,7 @@ def evaluate_and_tune_threshold(model, validation_dataset, target_precision=TARG
             break
     else:
         print(f"\nWARNING: no threshold reached {target_precision:.0%} precision on this "
-              f"validation set. Using the highest-precision threshold found instead. "
-              f"This usually means the dataset issue in load_datasets()'s docstring, "
-              f"not the training loop, is the bottleneck.")
+              f"validation set. Using the highest-precision threshold found instead.")
         best_idx = int(np.argmax(precisions[:-1])) if len(precisions) > 1 else 0
         best_threshold = thresholds[best_idx] if len(thresholds) > 0 else 0.5
 
@@ -261,8 +237,7 @@ def evaluate_and_tune_threshold(model, validation_dataset, target_precision=TARG
     print(classification_report(y_true, tuned_preds, target_names=["real", "ai_generated"]))
 
     THRESHOLD_PATH.write_text(str(float(best_threshold)))
-    print(f"\nSaved tuned threshold to {THRESHOLD_PATH} - use this at inference time "
-          f"instead of the default 0.5 cutoff.")
+    print(f"\nSaved tuned threshold to {THRESHOLD_PATH}")
 
     return best_threshold
 
@@ -309,9 +284,6 @@ def train_model():
         )
     ]
 
-    # =================================================
-    # PHASE 1: Train only the classification head
-    # =================================================
     print("\nPHASE 1: Training classifier head")
     print("---------------------------------")
 
@@ -326,15 +298,11 @@ def train_model():
         callbacks=callbacks
     )
 
-    # =================================================
-    # PHASE 2: Fine-tune upper layers of EfficientNet
-    # =================================================
     print("\nPHASE 2: Fine-tuning top EfficientNet layers")
     print("--------------------------------------------")
 
     base_model.trainable = True
 
-    # Freeze most layers, fine-tune only the last layers
     for layer in base_model.layers[:-25]:
         layer.trainable = False
 

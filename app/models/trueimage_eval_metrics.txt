@@ -1,0 +1,7 @@
+| Metric    |     Result |
+| --------- | ---------: |
+| Accuracy  | 85.95%     |
+| Precision | 94.51%     |
+| Recall    | 76.34%     |
+| F1-score  | 84.46%     |
+| ROC-AUC   | 95.96%     |
